@@ -23,8 +23,8 @@ textarea{min-height:110px}label{font-size:12px;color:#5F5951;display:block;margi
 .tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E1D9;display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
 .tabs div{flex:1;text-align:center;padding:14px 0;font-size:17px;font-weight:800;color:#2B2926}.tabs div.on{color:#C2381F}
 .vh{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-#qbar{position:fixed;left:0;right:0;bottom:calc(52px + env(safe-area-inset-bottom));z-index:6;display:none;justify-content:flex-end;pointer-events:none}
-.qb{flex:0 0 auto;padding:0 14px;height:35px;border-radius:10px;font-size:11px;box-shadow:0 4px 14px rgba(0,0,0,.28);font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:#1F1D1B}.qb.red{background:#C2381F}
+#qbar{position:fixed;right:8px;top:50%;transform:translateY(-50%);z-index:6;display:none;pointer-events:none}
+.qb{flex:0 0 auto;width:72px;padding:0;height:35px;border-radius:10px;font-size:11px;box-shadow:0 4px 14px rgba(0,0,0,.28);font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:#1F1D1B}.qb.red{background:#C2381F}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10;display:flex;align-items:flex-end;justify-content:center}
 .sheet>div{background:#F6F4F1;width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px}
 .wm{position:fixed;right:10px;bottom:calc(112px + env(safe-area-inset-bottom));font-size:10px;color:#C9C4BC;pointer-events:none;z-index:4}
@@ -291,7 +291,7 @@ function render(){tabsHtml();var h='';
  if(tab==='add')h=vAdd();
  else if(tab==='cust'){var n=view.name;h=n==='cust'?vCust(view.id):n==='cstat'?vCstat(view.id):n==='new'?seg()+vNew():n==='imp'?seg()+'<div style="height:12px"></div>'+vImp():seg()+'<div style="height:12px"></div>'+vList()}
  else if(tab==='todo')h=vTodo();else if(tab==='ship')h=vShip();else h=vMore();
- var qb=$('#qbar');if(tab==='add'){qb.style.display='flex';qb.innerHTML='<div style="display:flex;gap:18px;padding:0 12px;pointer-events:auto"><button class="qb dark" data-act="goNew">+ 新客户</button><button class="qb dark" data-act="srcMgr">货源管理</button><label class="qb red" for="g_gal">图库</label><label class="qb red" for="g_cam">拍照</label></div>'}else{qb.style.display='none';qb.innerHTML=''}
+ var qb=$('#qbar');if(tab==='add'){qb.style.display='flex';qb.innerHTML='<div style="display:flex;flex-direction:column;gap:18px;pointer-events:auto"><button class="qb dark" data-act="goNew">+ 新客户</button><button class="qb dark" data-act="srcMgr">货源管理</button><label class="qb red" for="g_gal">图库</label><label class="qb red" for="g_cam">拍照</label></div>'}else{qb.style.display='none';qb.innerHTML=''}
  var keep=document.activeElement&&document.activeElement.id;var pos=keep?document.activeElement.selectionStart:0;
  $('#app').innerHTML=h;
  if(keep&&$('#'+keep)){var el=$('#'+keep);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}}
