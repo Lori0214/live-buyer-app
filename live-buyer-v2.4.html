@@ -23,8 +23,8 @@ textarea{min-height:110px}label{font-size:12px;color:#5F5951;display:block;margi
 .tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E1D9;display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
 .tabs div{flex:1;text-align:center;padding:14px 0;font-size:17px;font-weight:800;color:#2B2926}.tabs div.on{color:#C2381F}
 .vh{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-#qbar{position:fixed;left:0;right:0;bottom:calc(52px + env(safe-area-inset-bottom));z-index:6;display:none;justify-content:center;pointer-events:none}
-.qb{flex:1;height:44px;border-radius:12px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:#1F1D1B}.qb.red{background:#C2381F}
+#qbar{position:fixed;left:0;right:0;bottom:calc(52px + env(safe-area-inset-bottom));z-index:6;display:none;justify-content:flex-end;pointer-events:none}
+.qb{flex:0 0 auto;padding:0 14px;height:35px;border-radius:10px;font-size:11px;box-shadow:0 4px 14px rgba(0,0,0,.28);font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:#1F1D1B}.qb.red{background:#C2381F}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10;display:flex;align-items:flex-end;justify-content:center}
 .sheet>div{background:#F6F4F1;width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px}
 .wm{position:fixed;right:10px;bottom:calc(112px + env(safe-area-inset-bottom));font-size:10px;color:#C9C4BC;pointer-events:none;z-index:4}
@@ -291,7 +291,7 @@ function render(){tabsHtml();var h='';
  if(tab==='add')h=vAdd();
  else if(tab==='cust'){var n=view.name;h=n==='cust'?vCust(view.id):n==='cstat'?vCstat(view.id):n==='new'?seg()+vNew():n==='imp'?seg()+'<div style="height:12px"></div>'+vImp():seg()+'<div style="height:12px"></div>'+vList()}
  else if(tab==='todo')h=vTodo();else if(tab==='ship')h=vShip();else h=vMore();
- var qb=$('#qbar');if(tab==='add'){qb.style.display='flex';qb.innerHTML='<div style="display:flex;gap:12px;width:100%;max-width:520px;padding:0 16px;pointer-events:auto"><button class="qb dark" data-act="goNew">+ 新客户</button><button class="qb dark" data-act="srcMgr">货源管理</button><label class="qb red" for="g_gal">图库</label><label class="qb red" for="g_cam">拍照</label></div>'}else{qb.style.display='none';qb.innerHTML=''}
+ var qb=$('#qbar');if(tab==='add'){qb.style.display='flex';qb.innerHTML='<div style="display:flex;gap:18px;padding:0 12px;pointer-events:auto"><button class="qb dark" data-act="goNew">+ 新客户</button><button class="qb dark" data-act="srcMgr">货源管理</button><label class="qb red" for="g_gal">图库</label><label class="qb red" for="g_cam">拍照</label></div>'}else{qb.style.display='none';qb.innerHTML=''}
  var keep=document.activeElement&&document.activeElement.id;var pos=keep?document.activeElement.selectionStart:0;
  $('#app').innerHTML=h;
  if(keep&&$('#'+keep)){var el=$('#'+keep);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}}
@@ -391,7 +391,7 @@ document.addEventListener('click',function(e){
  case'closeSheet':closeSheet();break;
  case'clearShots':view.shots=[];render();break;
  case'clearAsk':sheet('<h2>清除所有数据？</h2><div class="muted">会删除这台手机里所有客户、订单、记录、待办，无法恢复。要保留的话请先回到“更多”点“复制备份”。</div><button class="btn" data-act="clearYes">确认清除</button><button class="btn ghost" data-act="closeSheet">取消</button>');break;
- case'clearYes':var cleared={customers:S.customers,orders:S.orders,records:S.records};S={customers:[],records:[],todos:[],orders:[]};shipSel={};addrSel={};shipOut='';save();logAdd('清除',VER,cleared);closeSheet();tab='more';view={name:'more'};toast('已清除全部数据');render();break;
+ case'clearYes':var cleared={customers:S.customers,orders:S.orders,records:S.records};S={customers:[],records:[],todos:[],orders:[]};shipSel={};addrSel={};shipOut='';save();try{localStorage.setItem('lb-seen','1')}catch(e){}logAdd('清除',VER,cleared);closeSheet();tab='more';view={name:'more'};toast('已清除全部数据');render();break;
  case'demo':sheet('<h2>载入示例数据？</h2><div class="muted">示例数据全是虚构的。会替换掉现在这台手机里的数据，请先复制备份。</div><button class="btn" data-act="demoYes">载入</button><button class="btn ghost" data-act="closeSheet">取消</button>');break;
  case'demoYes':loadDemo();closeSheet();toast('已载入示例数据');render();break;
  case'cParse':{var f0=nfInit();f0.raw=val('c_raw');var P=parseAddr(f0.raw);if(P.nick)f0.nick=P.nick;if(P.surname)f0.surname=P.surname;var a0=f0.addrs[0];if(P.receiver)a0.receiver=P.receiver;if(P.phone)a0.phone=P.phone;if(P.region)a0.region=P.region;if(P.address)a0.address=P.address;render();toast('已填入，请核对');break}
@@ -429,8 +429,8 @@ document.addEventListener('change',function(e){var t=e.target;
  if(t.id==='imp_file'&&t.files.length){var fs=Array.prototype.slice.call(t.files);view.shots=view.shots||[];var left=fs.length;fs.forEach(function(f){readImg(f,function(d){view.shots.push(d);if(--left===0)render()})})}
  if(t.id==='c_file'&&t.files[0]){readImg(t.files[0],function(d){var p=$('#c_prev');if(p)p.innerHTML='<img src="'+d+'" style="width:100%;border-radius:10px;border:1px solid #ECE8E1"><div class="muted">对照截图，把买家昵称、收件人、电话、地址填到下面。</div>'})}
 });
-var autoDemo=false;try{autoDemo=/[?&]demo=1/.test(location.search)&&!localStorage.getItem('lb-demo-2.2')}catch(e){}
-if(autoDemo){loadDemo();try{localStorage.setItem('lb-demo-2.2','1')}catch(e){}}
+var autoDemo=false;try{autoDemo=(S.customers.length===0&&!localStorage.getItem('lb-seen'))||(/[?&]demo=1/.test(location.search)&&!localStorage.getItem('lb-demo-2.2'))}catch(e){}
+if(autoDemo){loadDemo();try{localStorage.setItem('lb-demo-2.2','1');localStorage.setItem('lb-seen','1')}catch(e){}}
 render();
 })();
 </script>
