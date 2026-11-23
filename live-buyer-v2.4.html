@@ -26,6 +26,7 @@ textarea{min-height:110px}label{font-size:12px;color:#5F5951;display:block;margi
 #qbar{position:fixed;right:8px;top:50%;transform:translateY(-50%);z-index:6;display:none;pointer-events:none}
 .qb{flex:0 0 auto;width:72px;padding:0;height:35px;border-radius:10px;font-size:11px;box-shadow:0 4px 14px rgba(0,0,0,.28);font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:#1F1D1B}.qb.red{background:#C2381F}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet>div>*{flex-shrink:0}
 .sheet>div{background:#F6F4F1;width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px}
 .wm{position:fixed;right:10px;bottom:calc(112px + env(safe-area-inset-bottom));font-size:10px;color:#C9C4BC;pointer-events:none;z-index:4}
 .bar{height:10px;border-radius:5px;background:#C2381F}
@@ -43,6 +44,7 @@ a.lnk{color:#C2381F;font-weight:600}
 <div id="qbar"></div>
 <input type="file" id="g_cam" accept="image/*" capture="environment" class="vh">
 <input type="file" id="g_gal" accept="image/*" class="vh">
+<input type="file" id="g_file" class="vh">
 <script>
 (function(){
 var KEY='live-buyer-v1';
@@ -58,21 +60,25 @@ function pad(n){return('0'+n).slice(-2)}
 function ymd(d){d=d||new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 function addDays(s,n){var d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return ymd(d)}
 function mmdd(ts){var d=new Date(ts);return pad(d.getMonth()+1)+pad(d.getDate())}
-function cust(id){return S.customers.filter(function(c){return c.id===id})[0]}
-function nextNo(){return S.customers.reduce(function(m,c){return Math.max(m,c.no)},0)+1}
+var CONSULT={id:'consult',no:1,nick:'仅咨询',surname:'',key:'仅咨询',gender:'',likes:'',note:'',addrs:[],virtual:true};
+function cust(id){return id==='consult'?CONSULT:S.customers.filter(function(c){return c.id===id})[0]}
+function nextNo(){return S.customers.reduce(function(m,c){return Math.max(m,c.no)},1)+1}
 function toast(t){var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;left:50%;top:40%;transform:translateX(-50%);background:#1F1D1B;color:#fff;padding:12px 18px;border-radius:12px;z-index:30;max-width:80%;text-align:center';document.body.appendChild(d);setTimeout(function(){d.remove()},1800)}
 function copy(t){return new Promise(function(res){var ok=false;try{navigator.clipboard.writeText(t).then(function(){res(true)},function(){fb()});return}catch(e){}fb();function fb(){var a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();try{ok=document.execCommand('copy')}catch(e){}a.remove();res(ok)}})}
 function addrOf(c,id){var a=c.addrs.filter(function(x){return x.id===(id||c.defaultId)})[0];return a||c.addrs[0]}
 function addrLabel(c,a){return a.id===c.defaultId?'默认':(a.type==='temp'?'临时':'备用')}
 function addrOk(a){return a&&a.receiver&&/\d{7,}/.test(a.phone||'')&&a.region&&/\d/.test(a.address||'')}
 
-var VER='v2.4';
+var VER='v2.5';
 var tab='add',view={name:'add'},q='',quickOpen=false,restoreTmp=null;
 var shipSel={},addrSel={},shipOut='';
 var PLACES=['货源 A 档口','货源 B 仓库'];
 function places(){return S.places&&S.places.length?S.places:PLACES}
 function addPlace(p){p=p.trim();if(!p)return;S.places=S.places&&S.places.length?S.places:PLACES.slice();if(S.places.indexOf(p)<0)S.places.push(p);save()}
-var TAGS=['改尺寸','改颜色','改链长','无货·几天后取','加急'];
+var KINDS=['改尺寸','订做','货源','发货','咨询','日期','其他'];var QKINDS=['改尺寸','订做','咨询'];var BLOCK=['改尺寸','订做','货源'];
+function kLabel(k){return k==='日期'?'📅 日期':k}
+function isPick(t){return(t.kind==='货源'||t.kind==='订做')&&!!t.place}
+function normalize(){var one=S.customers.filter(function(c){return c.no===1});if(one.length){var nn=nextNo();one.forEach(function(c){c.no=nn++});save()}var M={'取货':'货源','改款':'改尺寸'};(S.todos||[]).forEach(function(t){if(M[t.kind])t.kind=M[t.kind]});(S.records||[]).forEach(function(r){r.tags=(r.tags||[]).map(function(g){return g==='无货·几天后取'?'订做':/^改/.test(g)?'改尺寸':g}).filter(function(g,k,a){return a.indexOf(g)===k&&KINDS.indexOf(g)>=0})})}
 
 function setTab(t){tab=t;view={name:t==='cust'?'list':t};window.scrollTo(0,0);render()}
 function tabsHtml(){var T=[['add','加单'],['todo','待办'],['ship','发货'],['cust','资料'],['more','更多']];$('#tabs').innerHTML=T.map(function(x){return'<div class="'+(tab===x[0]?'on':'')+'" data-tab="'+x[0]+'">'+x[1]+'</div>'}).join('')}
@@ -97,7 +103,7 @@ function loadDemo(){var now=Date.now(),D=86400000;var TS=function(d){return new 
  mk(7,'Wendy','王','34','女','','爱问尺寸',[A('王女士','13800000004','四川省成都市武侯区','示例路12号3单元502'),A('王女士','13800000044','四川省成都市锦江区','示例路30号','temp')]),
  mk(8,'Champagne','樂','','女','','小红书订单案例',[A('樂女士','13800000051','广东省深圳市南山区','沙河街道示例路1号')]),
  mk(9,'馒头可可','许','','女','','小红书订单案例',[A('许女士','13800000072','天津市北辰区','瑞景街道示例路2号')])];
- var P={};C.forEach(function(c){P[c.nick]=c});
+ C.forEach(function(c){c.no+=1});var P={};C.forEach(function(c){P[c.nick]=c});
  var O=[['Lily','2026-06-18',120,'小耳圈 ×1'],['Lily','2026-07-05',130,'线条戒指 ×1'],['Lily','2026-07-20',130,'蝴蝶结耳环 ×1'],['Lily','2026-09-08',170,'链条手链 ×1'],['Lily','2026-09-22',170,'银项链 ×1'],['Lily','2026-10-12',180,'耳环套装'],['Lily','2026-11-03',100,'线条小戒指 ×1'],['Lily','2026-11-10',100,'小耳圈 ×1'],['Lily','2026-11-20',180,'蝴蝶结耳环 + 手链'],
  ['老赵','2026-11-18',150,'戒指（某款）'],['阿远','2026-11-19',120,'线条戒指'],['Amy','2026-11-21',88,'细链戒指'],['Cindy','2026-11-15',198,'耳环套装'],['豆豆','2026-11-14',160,'手链 ×2'],['Wendy','2026-11-12',520,'手链 ×2'],
  ['Champagne','2026-11-20',100,'线条小戒指 ×1'],['馒头可可','2026-11-20',68,'小耳圈 ×1']];
@@ -106,24 +112,28 @@ function loadDemo(){var now=Date.now(),D=86400000;var TS=function(d){return new 
   if(opt.ship!==undefined){r.shipped=true;r.shipDate=now-opt.ship*D;r.bag=c.no+'-'+mmdd(r.shipDate);r.shipAddr=c.addrs[0]}S2.records.push(r);return r};
  var TD=function(nick,rid,kind,text,date,place){S2.todos.push({id:uid(),cid:P[nick].id,rid:rid,kind:kind,text:text,date:date,place:place||'',done:false})};
  R('Lily','线条小戒指',[],TS('2026-11-20'),PH.ring);
- var a=R('Lily','蝴蝶结耳环（改短链）',['改链长'],TS('2026-11-21'));TD('Lily',a.id,'改款','改链长：蝴蝶结耳环（改短链）','2026-11-25','改款师傅');
- var b=R('Lily','链条手链',['无货·几天后取'],TS('2026-11-21'),'',{place:'货源 A 档口',days:3});TD('Lily',b.id,'货源','链条手链（3 天后取）','2026-11-24','货源 A 档口');
- var c2=R('老赵','戒指（某款）',['无货·几天后取'],TS('2026-11-21'),'',{place:'货源 A 档口',days:3});TD('老赵',c2.id,'货源','戒指（某款）（3 天后取）','2026-11-24','货源 A 档口');
- var d=R('阿远','线条戒指（要改尺寸）',['改尺寸'],TS('2026-11-21'),PH.ring);TD('阿远',d.id,'改款','改尺寸：线条戒指','2026-11-25','改款师傅');
- var e=R('Wendy','耳钉（某款）',['无货·几天后取'],TS('2026-11-22'),'',{place:'货源 B 仓库',days:2});TD('Wendy',e.id,'货源','耳钉（某款）（2 天后取）','2026-11-24','货源 B 仓库');
- var f=R('Amy','细链戒指',['加急'],TS('2026-11-22'));S2.todos.push({id:uid(),cid:P['Amy'].id,rid:f.id,kind:'发货',text:'加急发货',date:ymd(),place:'',done:false});
+ var a=R('Lily','蝴蝶结耳环（改短链）',['改尺寸'],TS('2026-11-21'));TD('Lily',a.id,'改尺寸','改尺寸：蝴蝶结耳环（改短链）','2026-11-25');
+ var b=R('Lily','链条手链',['订做'],TS('2026-11-21'),'',{place:'货源 A 档口',days:3});TD('Lily',b.id,'订做','链条手链（3 天后取）','2026-11-24','货源 A 档口');
+ var c2=R('老赵','戒指（某款）',['订做'],TS('2026-11-21'),'',{place:'货源 A 档口',days:3});TD('老赵',c2.id,'订做','戒指（某款）（3 天后取）','2026-11-24','货源 A 档口');
+ var d=R('阿远','线条戒指（要改尺寸）',['改尺寸'],TS('2026-11-21'),PH.ring);TD('阿远',d.id,'改尺寸','改尺寸：线条戒指','2026-11-25');
+ var e=R('Wendy','耳钉（某款）',['订做'],TS('2026-11-22'),'',{place:'货源 B 仓库',days:2});TD('Wendy',e.id,'订做','耳钉（某款）（2 天后取）','2026-11-24','货源 B 仓库');
+ var f=R('Amy','细链戒指',[],TS('2026-11-22'));S2.todos.push({id:uid(),cid:P['Amy'].id,rid:f.id,kind:'发货',text:'加急发货',date:ymd(),place:'',done:false});
  R('Cindy','耳环',[],TS('2026-11-14'),'',{ship:1});R('Cindy','耳环套装',[],TS('2026-11-14'),'',{ship:1});
  R('豆豆','手链',[],TS('2026-11-13'),'',{ship:1});
  R('Wendy','手链',[],TS('2026-11-11'),'',{ship:1});R('Wendy','手链',[],TS('2026-11-11'),'',{ship:1});
  R('Champagne','线条小戒指',[],TS('2026-11-20'),PH.ring);
  R('馒头可可','小耳圈',[],TS('2026-11-20'),PH.hoop);
+ S2.todos.push({id:uid(),cid:P['Cindy'].id,rid:'',kind:'咨询',text:'问圣诞前能不能收到货',date:'2026-11-26',place:'',done:false,created:now});
+ S2.todos.push({id:uid(),cid:P['Lily'].id,rid:'',kind:'货源',text:'补一对同款耳钉',date:'2026-11-25',place:'东门批发区',done:false,created:now});
+ S2.todos.push({id:uid(),cid:'',rid:'',kind:'日期',text:'周六去深圳看货',date:'2026-11-28',place:'',done:false,created:now});
+ S2.todos.push({id:uid(),cid:'',rid:'',kind:'其他',text:'整理本周快递单号，周日前回传给客户',date:'',place:'',done:false,created:now});
 
  S=S2;save();shipSel={};addrSel={};shipOut='';view={name:'add'};tab='add';logAdd('示例数据',VER,S2)}
-function recReady(r){return!S.todos.some(function(t){return!t.done&&t.kind!=='发货'&&(t.rid===r.id||(!t.rid&&t.cid===r.cid))})}
+function recReady(r){return!S.todos.some(function(t){return!t.done&&BLOCK.indexOf(t.kind)>=0&&(t.rid===r.id||(!t.rid&&t.cid===r.cid))})}
 function batchesOf(cid){var m={},o=[];S.records.forEach(function(r){if(!r.shipped||!r.bag||(cid&&r.cid!==cid))return;var k=r.cid+'|'+r.bag;if(!m[k]){m[k]={key:k,cid:r.cid,bag:r.bag,shipDate:r.shipDate||0,recs:[],tracking:''};o.push(m[k])}m[k].recs.push(r);if(r.tracking)m[k].tracking=r.tracking});return o.sort(function(a,b){return b.shipDate-a.shipDate})}
 function newCode(c){var base=c.no+'-'+mmdd(Date.now());var used={};S.records.forEach(function(r){if(r.cid===c.id&&r.bag)used[r.bag]=1});if(!used[base])return base;var n=2;while(used[base+'-'+n])n++;return base+'-'+n}
 function batchText(c,ad,n,code){return'【'+c.no+'】'+c.nick+'-'+c.surname+' '+ad.phone+'\n'+ad.region+ad.address+'\n首饰 ×'+n+' · 备注 '+code}
-function shipCard(c){var id=c.id;var un=S.records.filter(function(r){return r.cid===id&&!r.shipped}).sort(function(a,b){return a.createdAt-b.createdAt});
+function shipCard(c){var id=c.id;var un=S.records.filter(function(r){return r.cid===id&&!r.shipped&&!r.inq}).sort(function(a,b){return a.createdAt-b.createdAt});
  var sel=view.sel||{};var a=addrOf(c,addrSel[id]);var k=un.filter(function(r){return sel[r.id]}).length;
  var h='<div class="card" style="border-color:#E8C98A"><div class="row"><b class="grow">待发货商品（'+un.length+' 件）</b>'+(un.some(recReady)?'<span class="chip" data-act="selReady" data-id="'+id+'">全选可发</span>':'')+'</div>';
  if(!un.length)return h+'<div class="muted">没有待发货的商品。</div></div>';
@@ -149,7 +159,7 @@ function readCsv(buf){var txt;try{txt=new TextDecoder('utf-8',{fatal:true}).deco
  return txt.replace(/^\uFEFF/,'').split(/\r?\n/).map(function(l){return l.split(/[,\t;]/).map(function(x){return x.replace(/^"|"$/g,'')})})}
 function rowsToLines(rows){return rows.map(function(r){return r.filter(function(x){return String(x).trim()}).join(' ')}).filter(Boolean)}
 window.LB={readXlsx:readXlsx,readCsv:readCsv};
-function pending(cid){return S.todos.filter(function(t){return t.cid===cid&&!t.done&&t.kind!=='发货'})}
+function pending(cid){return S.todos.filter(function(t){return t.cid===cid&&!t.done&&BLOCK.indexOf(t.kind)>=0})}
 function stat(cid){var o=S.orders.filter(function(x){return x.cid===cid&&!x.refunded});var tot=o.reduce(function(s,x){return s+x.amount},0);var since=addDays(ymd(),-182);var n6=o.filter(function(x){return x.payDate>=since}).length;return{n:o.length,tot:tot,avg:o.length?tot/o.length:0,freq:n6/6}}
 
 /* ---------- views ---------- */
@@ -163,8 +173,8 @@ function vAdd(){var todoN=S.todos.filter(function(t){return!t.done}).length;
  (S.demo?'<div class="muted" style="text-align:center">演示数据（含小红书订单案例，地址电话为虚构）。要清除请到“更多”。</div>':'')+
  '<div class="card" style="background:#1F1D1B;border-color:#1F1D1B;color:#fff" data-tab="todo"><b>待办 '+todoN+' 项</b><span style="font-size:13px;color:#D9D4CC">点进去，所有客户要办的事放在一起</span></div>'+
  '<input id="q" placeholder="输入编号或名字，点客户直接加单" value="'+esc(q)+'">'+
- (S.customers.length?custList('quickFor'):'<div class="muted">还没有客户。点下面“+ 新客户”，或先点“拍照/图库”，之后再选客户。</div>')+
- (rec.length?'<h2>最近加单</h2>'+rec.map(function(r){var c=cust(r.cid);return'<div class="card"><div class="row" style="align-items:flex-start">'+(r.photo?'<img class="photo" src="'+r.photo+'">':'')+'<div class="grow"><b>'+esc(c?c.no+' '+c.key:'')+'</b><div>'+esc(r.note||'（无备注）')+'</div><div class="muted">'+(r.tags||[]).join(' · ')+' '+new Date(r.createdAt).toLocaleDateString()+'</div></div></div></div>'}).join(''):'')+'</div>'}
+ (!q||q==='1'||'仅咨询'.indexOf(q)>=0?'<div class="card" data-act="quickFor" data-id="consult"><div class="row"><span class="no">1</span><b class="grow" style="font-size:18px">仅咨询</b><span class="muted">只问问、没下单的客人</span></div></div>':'')+(S.customers.length?custList('quickFor'):'<div class="muted">还没有客户。点下面“+ 新客户”，或先点“拍照/图库”，之后再选客户。</div>')+
+ (rec.length?'<h2>最近加单 <span class="muted" style="font-size:12px;font-weight:400">点进去可查看/修改</span></h2>'+rec.map(function(r){var c=cust(r.cid);return'<div class="card" data-act="recOpen" data-rid="'+r.id+'"><div class="row" style="align-items:flex-start">'+(r.photo?'<img class="photo" src="'+r.photo+'">':'')+'<div class="grow"><b>'+esc(c?c.no+' '+c.key:'')+'</b><div>'+esc(r.note||'（无备注）')+'</div><div class="muted">'+(r.tags||[]).join(' · ')+' '+(r.date?'📅 '+r.date.slice(5)+' ':'')+new Date(r.createdAt).toLocaleDateString()+'</div></div><span class="chip">查看 ›</span></div></div>'}).join(''):'')+'</div>'}
 function nfInit(){if(!view.nf)view.nf={nick:'',surname:'',gender:'',birthday:'',likes:'',note:'',raw:'',shot:'',addrs:[{receiver:'',phone:'',region:'',address:''}]};return view.nf}
 function nfld(l,k,v,ph,ex){return'<div><label>'+l+'</label><input id="nf_'+k+'" data-nf="'+k+'" value="'+esc(v||'')+'" placeholder="'+esc(ph||'')+'" '+(ex||'')+'></div>'}
 function vNew(){var f=nfInit();
@@ -175,7 +185,7 @@ function vNew(){var f=nfInit();
  '<div><label>生日（选填）</label><input type="date" id="nf_birthday" data-nf="birthday" value="'+esc(f.birthday)+'"></div>'+nfld('喜好（选填）','likes',f.likes,'例如：喜欢细链、银色')+nfld('备注（选填）','note',f.note)+'</div>'+
  f.addrs.map(function(a,i){var k=function(n,l){return'<div><label>'+l+'</label><input id="na_'+i+'_'+n+'" data-na="'+i+'.'+n+'" value="'+esc(a[n])+'"></div>'};return'<div class="card"><div class="row"><b class="grow">'+(i===0?'默认地址':'备选地址 '+i)+'</b>'+(i>0?'<span class="chip red" data-act="nfDelAddr" data-i="'+i+'">删除</span>':'')+'</div>'+k('receiver','收件人')+k('phone','手机号')+k('region','省市区')+k('address','详细地址')+'</div>'}).join('')+
  '<button class="btn ghost" data-act="nfAddAddr">+ 添加备选地址</button><button class="btn" data-act="nfSave">保存新客户</button></div>'}
-function sSources(){sheet('<h2>货源管理</h2><div class="muted">货源可以自己输入，数量不限。待办页会按货源汇总“当下该去取的货”。</div>'+places().map(function(p){var n=S.todos.filter(function(x){return x.kind==='货源'&&!x.done&&(x.place||'未选货源')===p}).length;return'<div class="row"><span class="grow">'+esc(p)+'</span><span class="muted">待取 '+n+' 件</span><span class="chip red" data-act="delPlace" data-p="'+esc(p)+'">删除</span></div>'}).join('')+'<div class="row"><input id="pl_new" placeholder="输入新货源名称"><span class="chip on" style="padding:12px 16px;font-size:14px" data-act="addPlaceMore">添加</span></div>')}
+function sSources(){sheet('<h2>货源管理</h2><div class="muted">货源可以自己输入，数量不限。待办页会按货源汇总“当下该去取的货”。</div>'+places().map(function(p){var n=S.todos.filter(function(x){return isPick(x)&&!x.done&&x.place===p}).length;return'<div class="row"><span class="grow">'+esc(p)+'</span><span class="muted">待取 '+n+' 件</span><span class="chip red" data-act="delPlace" data-p="'+esc(p)+'">删除</span></div>'}).join('')+'<div class="row"><input id="pl_new" placeholder="输入新货源名称"><span class="chip on" style="padding:12px 16px;font-size:14px" data-act="addPlaceMore">添加</span></div>')}
 function vCust(id){
  var c=cust(id);if(!c)return'';var st=stat(id);
  var recs=S.records.filter(function(r){return r.cid===id}).sort(function(a,b){return b.createdAt-a.createdAt});
@@ -190,7 +200,7 @@ function vCust(id){
  c.addrs.map(function(a){return'<div class="sep"></div><div class="col" style="gap:4px"><div class="row"><span class="chip '+(a.id===c.defaultId?'green':'')+'">'+addrLabel(c,a)+'</span><b>'+esc(a.receiver)+' '+esc(a.phone)+'</b></div><div class="muted">'+esc(a.region)+' '+esc(a.address)+'</div><div class="row">'+(a.id!==c.defaultId?'<span class="chip" data-act="setDef" data-id="'+id+'" data-aid="'+a.id+'">设为默认</span>':'')+'<span class="chip" data-act="editAddr" data-id="'+id+'" data-aid="'+a.id+'">编辑</span>'+(c.addrs.length>1?'<span class="chip red" data-act="delAddr" data-id="'+id+'" data-aid="'+a.id+'">删除</span>':'')+'</div></div>'}).join('')+'</div>'+
  '<div class="card" data-act="cstat" data-id="'+id+'"><div class="row"><b class="grow">统计</b><span class="chip">详情 ›</span></div><div class="muted">订单 '+st.n+' 笔 · 总额 ¥'+st.tot.toFixed(0)+' · 客单价 ¥'+st.avg.toFixed(0)+' · 近6个月频次 '+st.freq.toFixed(1)+' 次/月</div></div>'+
  '<div class="card"><b>订单</b>'+(ords.length?ords.map(function(o){return'<div class="row"><div class="grow"><div>'+esc(o.title||'订单')+' ¥'+o.amount+'</div><div class="muted">'+o.payDate+(o.refunded?' · 已退款（不计入统计）':'')+'</div></div><span class="chip" data-act="refund" data-oid="'+o.id+'">'+(o.refunded?'取消退款':'标记退款')+'</span></div>'}).join(''):'<div class="muted">还没有订单</div>')+'</div>'+
- '<div class="card"><b>待办</b>'+(tds.length?tds.map(function(t){return'<div class="row"><span class="chip amber">'+t.kind+'</span><span class="grow">'+esc(t.text)+'</span><span class="muted">'+(t.date||'')+'</span></div>'}).join(''):'<div class="muted">没有待办</div>')+'</div>'+
+ '<div class="card"><b>待办</b>'+(tds.length?tds.map(function(t){return'<div class="row" data-act="tdOpen" data-tid="'+t.id+'"><span class="chip amber">'+kLabel(t.kind)+'</span><span class="grow">'+esc(t.text)+'</span><span class="muted">'+(t.date||'')+'</span></div>'}).join(''):'<div class="muted">没有待办</div>')+'</div>'+
  shipCard(c)+
  '<div class="card"><b>已发货批次</b><div class="muted">同一袋装的商品放在一起，袋上写「客户编号-发货日期」。</div>'+(batchesOf(id).length?batchesOf(id).map(function(b){return'<div class="sep"></div><div class="col" style="gap:4px"><div class="row"><span class="chip on">'+esc(b.bag)+'</span><span class="muted grow">'+new Date(b.shipDate).toLocaleDateString()+' · 同袋 '+b.recs.length+' 件</span>'+(b.tracking?'<span class="chip green">'+esc(b.tracking)+'</span>':'<span class="chip amber">待回传单号</span>')+'</div><div class="muted">'+b.recs.map(function(r){return esc(r.note||'（无备注）')}).join('、')+'</div></div>'}).join(''):'<div class="muted">还没有发过货</div>')+'</div></div>'}
 
@@ -208,22 +218,22 @@ function vCstat(id){var c=cust(id);if(!c)return'';var all=S.orders.filter(functi
  '<div class="row">'+tile('历史单数',st.n+' 单','全部')+tile('历史消费额','¥'+st.tot.toFixed(0),'全部')+'</div>'+
  '<div class="card"><b>最常消费价格区间</b><div class="muted">按每单金额'+(top[1]?' · 最常：'+top[0]+'（'+top[1]+' 单）':'')+'</div>'+bd.map(function(b){return'<div class="row"><span style="width:84px;font-size:13px">'+b[0]+'</span><div class="grow"><div class="bar" style="width:'+(b[1]/mx*100)+'%;min-width:2px"></div></div><span style="width:40px;text-align:right;font-size:13px">'+b[1]+' 单</span></div>'}).join('')+'</div>'+
  '<div class="card"><b>消费趋势</b><div class="muted">近 6 个月 · 每月消费额（元）</div><svg viewBox="0 0 300 130" style="width:100%"><polyline fill="none" stroke="#C2381F" stroke-width="2.5" points="'+pts+'"/>'+mv.map(function(v,i){return'<circle cx="'+(20+i*52)+'" cy="'+(100-v/mm*80)+'" r="4" fill="#fff" stroke="#C2381F" stroke-width="2"/><text x="'+(20+i*52)+'" y="'+(92-v/mm*80)+'" font-size="10" text-anchor="middle" fill="#4A4640">'+(v?v.toFixed(0):'')+'</text><text x="'+(20+i*52)+'" y="122" font-size="10" text-anchor="middle" fill="#5F5951">'+months[i].slice(5)+'月</text>'}).join('')+'</svg></div></div>'}
+function todoRow(t){var c=cust(t.cid);var late=!t.done&&t.date&&t.date<=ymd();var pk=isPick(t);var rc=t.rid&&S.records.filter(function(r){return r.id===t.rid})[0];var ph=t.photo||(rc&&rc.photo)||'';
+ return'<div class="card" data-act="tdOpen" data-tid="'+t.id+'"><div class="row" style="align-items:flex-start">'+(ph?'<img class="photo" src="'+ph+'">':'')+'<div class="grow"><div class="row"><span class="chip amber">'+kLabel(t.kind)+'</span><b class="grow">'+esc(pk?t.place:(c?c.no+' '+c.key:'（未指定客户）'))+'</b>'+(t.date?'<span class="chip '+(late?'red':'')+'">📅 '+t.date.slice(5)+(late?' 到期':'')+'</span>':'')+'</div><div>'+(pk&&c?esc(c.no+' '+c.key+'：'):'')+esc(t.text||'')+((t.files&&t.files.length)?' 📎'+t.files.length:'')+'</div></div></div><div class="row"><button class="btn sm '+(t.done?'ghost':'dark')+'" data-act="tdone" data-tid="'+t.id+'">'+(t.done?'撤销完成':'完成')+'</button><span class="muted">点卡片看详情</span></div></div>'}
 function vTodo(){
- var show=view.done;var list=S.todos.filter(function(t){return show||!t.done}).sort(function(a,b){return(a.date||'9')<(b.date||'9')?-1:1});
- var today=ymd();var f=view.f||'全部';var src=view.src||'';
- var open=S.todos.filter(function(t){return t.kind==='货源'&&!t.done});var names=[];open.forEach(function(t){var p=t.place||'未选货源';if(names.indexOf(p)<0)names.push(p)});
- if(f!=='全部')list=list.filter(function(t){return t.kind===f});
- if(src)list=list.filter(function(t){return t.kind==='货源'&&(t.place||'未选货源')===src});
- var groups={};open.forEach(function(t){var p=t.place||'未选货源';(groups[p]=groups[p]||[]).push(t)});
- var gk=Object.keys(groups).filter(function(p){return!src||p===src}).sort(function(a,b){var da=groups[a].map(function(t){return t.date||'9'}).sort()[0],db=groups[b].map(function(t){return t.date||'9'}).sort()[0];return da<db?-1:1});
- return'<div class="col"><h1>待办</h1><div class="row" style="flex-wrap:wrap">'+['全部','货源','改款','发货'].map(function(k){return'<span class="chip '+(f===k&&!src?'on':'')+'" data-act="todoF" data-k="'+k+'">'+k+'</span>'}).join('')+'<span class="chip '+(show?'on':'')+'" data-act="todoDone">显示已完成</span></div>'+
+ var show=view.done,f=view.f||'全部',src=view.src||'',today=ymd();
+ var byD=function(a,b){return(a.date||'9')<(b.date||'9')?-1:1};
+ var open=S.todos.filter(function(t){return isPick(t)&&!t.done});var names=[],groups={};open.forEach(function(t){if(names.indexOf(t.place)<0)names.push(t.place);(groups[t.place]=groups[t.place]||[]).push(t)});
+ var gk=Object.keys(groups).filter(function(p){return(!src||p===src)&&(f==='全部'||groups[p].some(function(t){return t.kind===f}))}).sort(function(a,b){var da=groups[a].map(function(t){return t.date||'9'}).sort()[0],db=groups[b].map(function(t){return t.date||'9'}).sort()[0];return da<db?-1:1});
+ var list=src?[]:S.todos.filter(function(t){if(!show&&t.done)return false;if(f!=='全部'&&t.kind!==f)return false;if(isPick(t)&&!t.done)return false;return true}).sort(byD);
+ return'<div class="col"><h1>待办</h1><div class="row" style="flex-wrap:wrap">'+['全部'].concat(KINDS).map(function(k){return'<span class="chip '+(f===k&&!src?'on':'')+'" data-act="todoF" data-k="'+k+'">'+kLabel(k)+'</span>'}).join('')+'<span class="chip '+(show?'on':'')+'" data-act="todoDone">显示已完成</span></div>'+
  (names.length?'<div class="muted">按货源看：</div><div class="row" style="flex-wrap:wrap"><span class="chip '+(!src?'on':'')+'" data-act="todoSrc" data-p="">全部货源</span>'+names.map(function(p){return'<span class="chip '+(src===p?'on':'')+'" data-act="todoSrc" data-p="'+esc(p)+'">'+esc(p)+' '+groups[p].length+'</span>'}).join('')+'</div>':'')+
- gk.map(function(p){var g=groups[p].slice().sort(function(a,b){return(a.date||'9')<(b.date||'9')?-1:1});var due=g.filter(function(t){return t.date&&t.date<=today}).length;
-  return'<div class="card" style="border-color:#E8C98A"><div class="row"><span class="chip amber">货源</span><b class="grow" style="font-size:17px">'+esc(p)+' · 取 '+g.length+' 件</b>'+(due?'<span class="chip red">'+due+' 件已到期</span>':'')+'</div>'+g.map(function(t){var c=cust(t.cid);return'<div class="row"><span class="grow">'+esc((c?c.no+' '+c.key:'')+'：'+t.text)+'</span><span class="muted">'+(t.date?t.date.slice(5):'')+'</span></div>'}).join('')+'<button class="btn dark sm" data-act="placeDone" data-p="'+esc(p)+'">'+esc(p)+' 已全部取齐</button></div>'}).join('')+
- (list.length?list.map(function(t){var c=cust(t.cid);var late=!t.done&&t.date&&t.date<=today;return'<div class="card"><div class="row"><span class="chip amber">'+t.kind+'</span><b class="grow">'+esc((t.place&&(t.kind==='货源'||t.kind==='改款'))?t.place:(c?c.no+' '+c.key:''))+'</b>'+(t.date?'<span class="chip '+(late?'red':'')+'">'+t.date.slice(5)+(late?' 到期':'')+'</span>':'')+'</div><div>'+((t.place&&(t.kind==='货源'||t.kind==='改款'))?esc(c?c.no+' '+c.key+'：':''):'')+esc(t.text)+'</div><div class="row"><button class="btn sm '+(t.done?'ghost':'dark')+'" data-act="tdone" data-tid="'+t.id+'">'+(t.done?'撤销完成':'完成')+'</button></div></div>'}).join(''):'<div class="muted">没有待办。</div>')+'</div>'}
+ gk.map(function(p){var g=groups[p].filter(function(t){return f==='全部'||t.kind===f}).sort(byD);var due=g.filter(function(t){return t.date&&t.date<=today}).length;
+  return'<div class="card" style="border-color:#E8C98A"><div class="row"><span class="chip amber">货源</span><b class="grow" style="font-size:17px">'+esc(p)+' · 取 '+g.length+' 件</b>'+(due?'<span class="chip red">'+due+' 件已到期</span>':'')+'</div>'+g.map(function(t){var c=cust(t.cid);return'<div class="row" data-act="tdOpen" data-tid="'+t.id+'"><span class="grow">'+esc((t.kind==='订做'?'订做 ':'')+(c?c.no+' '+c.key+'：':'')+t.text)+'</span><span class="muted">'+(t.date?'📅 '+t.date.slice(5):'')+'</span></div>'}).join('')+'<button class="btn dark sm" data-act="placeDone" data-p="'+esc(p)+'">'+esc(p)+' 已全部取齐</button></div>'}).join('')+
+ (list.length?list.map(todoRow).join(''):(gk.length?'':'<div class="muted">没有待办。右侧浮窗可以拍照/记事。</div>'))+'<div style="height:90px"></div></div>'}
 
 function vShip(){
- var folders=S.customers.map(function(c){var un=S.records.filter(function(r){return r.cid===c.id&&!r.shipped});return un.length?{c:c,n:un.length,ok:un.filter(recReady).length}:null}).filter(Boolean);
+ var folders=S.customers.map(function(c){var un=S.records.filter(function(r){return r.cid===c.id&&!r.shipped&&!r.inq});return un.length?{c:c,n:un.length,ok:un.filter(recReady).length}:null}).filter(Boolean);
  var sk=view.sq||'';var bs=batchesOf().filter(function(b){return!b.tracking});var bsel=view.bsel||{};var nsel=bs.filter(function(b){return bsel[b.key]}).length;
  var out=shipOut?'<div class="card" style="border-color:#E8C98A"><b>合并导出文本</b><pre id="out">'+esc(shipOut)+'</pre><button class="btn" data-act="copyOut">一键复制，发给快递</button></div>':'';
  return'<div class="col"><h1>合并发货</h1><div class="muted">每位客户是一个文件夹：点进客户页，勾选要发的商品，点“点击发货”。系统生成「客户编号-发货日期」，写在包装袋上。</div>'+
@@ -276,22 +286,75 @@ function sAddr(c,a){sheet('<h2>'+(a?'编辑地址':'添加地址')+'</h2>'+fld('
  (a?'':'<div><label>类型</label><select id="a_type"><option value="temp">临时地址</option><option value="other">备用地址</option></select></div><div class="row"><input type="checkbox" id="a_def" style="width:24px;min-height:24px"><span>设为默认地址</span></div>')+
  '<button class="btn" data-act="saveAddr" data-id="'+c.id+'" data-aid="'+(a?a.id:'')+'">保存</button>')}
 function sOrder(c){sheet('<h2>记一笔订单 · '+esc(c.key)+'</h2>'+fld('商品','o_t','','例如：线条小戒指 ×2')+fld('金额（元）','o_a','','','inputmode="decimal"')+'<div><label>付款日期</label><input type="date" id="o_d" value="'+ymd()+'"></div><button class="btn" data-act="saveOrder" data-id="'+c.id+'">保存订单</button>')}
-var qState={photo:'',tags:[],days:3,place:'',cid:''};
-function sQuick(cid){qState={photo:'',tags:[],days:3,place:places()[0]||'',cid:cid||''};drawQuick()}
-function drawQuick(){var s=qState;var need=s.tags.indexOf('无货·几天后取')>=0;
- sheet('<h2>快速加单</h2>'+(s.cid?'<div class="chip on">'+esc((cust(s.cid)||{}).key||'')+'</div>':'<div><label>选客户（输入编号或名字）</label><input id="qq" placeholder="如 12 或 Sunny"></div><div id="qres" class="row" style="flex-wrap:wrap">'+S.customers.slice(-6).reverse().map(function(c){return'<span class="chip" data-act="qPick" data-id="'+c.id+'">'+c.no+' '+esc(c.key)+'</span>'}).join('')+'</div>')+
- (s.photo?'<div class="row"><img class="photo" src="'+s.photo+'"><span class="muted grow">照片已选</span><label class="chip" for="g_cam">重拍</label><label class="chip" for="g_gal">重选</label></div>':'<div class="row"><label class="btn" for="g_cam" style="margin:0;height:56px;font-size:17px">拍照</label><label class="btn" for="g_gal" style="margin:0;height:56px;font-size:17px">图库</label></div>')+
- '<div><label>备注</label><textarea id="q_note" placeholder="例如：想要小一号 / 链子短一点" style="min-height:80px">'+esc(val('q_note'))+'</textarea></div>'+
- '<div class="row" style="flex-wrap:wrap">'+TAGS.map(function(t){return'<span class="chip '+(s.tags.indexOf(t)>=0?'on':'')+'" data-act="qTag" data-t="'+t+'">'+t+'</span>'}).join('')+'</div>'+
- (need?'<div class="row"><span>几天后能拿到</span><span class="chip" data-act="qDay" data-n="-1">－</span><b>'+s.days+' 天</b><span class="chip" data-act="qDay" data-n="1">＋</span></div><div><label>货源（点选，或直接输入新货源）</label></div><div class="row" style="flex-wrap:wrap">'+places().map(function(p){return'<span class="chip '+(s.place===p?'on':'')+'" data-act="qPlace" data-p="'+esc(p)+'">'+esc(p)+'</span>'}).join('')+'</div><div class="row"><input id="q_newplace" placeholder="输入新货源名称，如 东门批发区" value="'+esc(val('q_newplace'))+'"><span class="chip on" style="padding:12px 16px;font-size:14px" data-act="qAddPlace">添加</span></div>':'')+
- '<button class="btn" data-act="saveQuick">保存</button>');quickOpen=true}
-function qPhotoIn(d){if($('#sheet')&&quickOpen){var note=val('q_note');qState.photo=d;drawQuick();if($('#q_note'))$('#q_note').value=note}else{sQuick('');qState.photo=d;drawQuick()}}
+var qState={};
+function qNew(mode,o){qState={mode:mode,cid:'',cname:'',cextra:'',cnew:false,photo:'',photo0:'',files:[],tags:[],place:'',pname:'',pextra:'',date:'',note:'',rid:'',tid:'',delAsk:false};if(o)for(var k in o)qState[k]=o[k]}
+function sQuick(cid){closeSheet();qNew('add',{cid:cid||''});if(cid==='consult'){qState.tags=['咨询'];qState.date=ymd()}drawQuick()}
+function syncQ(){if(!$('#sheet')||!quickOpen)return;var s=qState;if($('#q_note'))s.note=$('#q_note').value;if($('#q_date'))s.date=$('#q_date').value;if($('#qq'))s.cname=$('#qq').value;if($('#q_newplace'))s.pname=$('#q_newplace').value;}
+function qRecent(){var last={};S.records.forEach(function(r){last[r.cid]=Math.max(last[r.cid]||0,r.createdAt||0)});S.todos.forEach(function(t){if(t.cid)last[t.cid]=Math.max(last[t.cid]||0,Number(t.created)||0)});return S.customers.slice().sort(function(a,b){return(last[b.id]||0)-(last[a.id]||0)||b.no-a.no}).slice(0,6)}
+function qMatch(k){k=(k||'').trim().toLowerCase();if(!k)return [CONSULT].concat(qRecent().slice(0,5));var cs=(k==='1'||'仅咨询'.indexOf(k)>=0)?[CONSULT]:[];return cs.concat(S.customers.filter(function(c){return String(c.no)===k||c.key.toLowerCase().indexOf(k)>=0||c.nick.toLowerCase().indexOf(k)>=0}).slice(0,6))}
+function qNickOf(v){var mt=(v||'').trim().match(/^(.+?)\s*[·\-－]\s*(.+)$/);return{nick:(mt?mt[1]:(v||'').trim()).trim(),sur:mt?mt[2].trim().charAt(0):''}}
+function qResHtml(){var k=(qState.cname||'').trim();var m=qMatch(k);var exact=S.customers.some(function(c){return c.key.toLowerCase()===k.toLowerCase()});var pn=qNickOf(k);
+ var same=k&&!/^\d+$/.test(k)&&!exact?S.customers.filter(function(c){return c.nick.toLowerCase()===pn.nick.toLowerCase()}):[];
+ var ex=k&&!/^\d+$/.test(k)&&!exact&&k!=='仅咨询';
+ return(m.length?'<div class="muted">'+(k?'匹配到：':'最近客户：')+'</div>':'')+'<div class="row" style="flex-wrap:wrap">'+m.map(function(c){return'<span class="chip" data-act="qPick" data-id="'+c.id+'">'+c.no+' '+esc(c.key)+'</span>'}).join('')+'</div>'+
+ (same.length?'<div style="color:#C2381F;font-size:14px;font-weight:700">⚠ 已有客户：'+same.map(function(c){return esc(c.no+' '+c.key)}).join('、')+'。是同一位请直接点上面的名字；真的是另一位，请自己在名字里加标识（如 '+esc(pn.nick)+'北京·'+(pn.sur||'方')+'）再保存。</div>':(ex?'<div class="muted">没有完全相同的客户，保存时会新建「'+esc(k)+'」（格式：昵称·姓）。</div>':''))}
+function qInName(v){qState.cname=v;var k=v.trim().toLowerCase();var hit=!qState.cnew&&k&&S.customers.filter(function(c){return c.key.toLowerCase()===k})[0];if(hit){syncQ();qState.cid=hit.id;drawQuick()}else{var r=$('#qres');if(r)r.innerHTML=qResHtml()}}
+function qInPlace(v){qState.pname=v;var k=v.trim().toLowerCase();var hit=k&&places().filter(function(p){return p.toLowerCase()===k})[0];qState.place=hit||'';var els=document.querySelectorAll('.qplace');for(var i=0;i<els.length;i++)els[i].classList.toggle('on',!!hit&&els[i].dataset.p===hit)}
+function qPlaceBox(){var s=qState;return'<div><label>货源（点选，或直接输入；输入已有的名字会自动选中）</label></div><div class="row" style="flex-wrap:wrap">'+places().map(function(p){return'<span class="chip qplace '+(s.place===p?'on':'')+'" data-act="qPlace" data-p="'+esc(p)+'">'+esc(p)+'</span>'}).join('')+'</div><input id="q_newplace" placeholder="输入货源名称，如 东门批发区" value="'+esc(s.pname)+'">'}
+function qDateDef(k){return k==='改尺寸'?addDays(ymd(),2):k==='订做'?addDays(ymd(),3):ymd()}
+function drawQuick(){var s=qState,m=s.mode;var kinds=(m==='add'||m==='rec')?QKINDS:KINDS;
+ var title={add:'快速加单',rec:'加单记录',todo:'新增待办',td:'待办详情',note:'其它 · 随手记'}[m];
+ var c0=s.cid&&cust(s.cid);
+ var cu=c0?'<div class="row"><span class="chip on">'+c0.no+' '+esc(c0.key)+'</span><span class="chip" data-act="qUnpick">不是这位 / 更换</span></div>':'<div><label>客户（'+((m==='add'||m==='rec')?'':'选填，')+'点最近客户，或直接输入名字）</label><input id="qq" placeholder="编号或名字，如 12 或 Sunny·方" value="'+esc(s.cname)+'"></div><div id="qres">'+qResHtml()+'</div>';
+ var bs='margin:0;height:52px;font-size:16px';
+ var ph='';if(m!=='note'){ph=s.photo?'<div class="row"><img class="photo" src="'+s.photo+'"><span class="muted grow">照片已选</span><label class="chip" for="g_cam">重拍</label><label class="chip" for="g_gal">重选</label><label class="chip" for="g_file">+ 文件</label></div>':'<div class="row"><label class="btn" for="g_cam" style="'+bs+'">拍照</label><label class="btn" for="g_gal" style="'+bs+'">图库</label><label class="btn" for="g_file" style="'+bs+'">文件</label></div>';
+  ph+=s.files.map(function(f,i){return'<div class="row"><a class="chip grow" href="'+f.data+'" download="'+esc(f.name)+'">📎 '+esc(f.name)+'</a><span class="chip red" data-act="qFileDel" data-i="'+i+'">✕</span></div>'}).join('')}
+ var kd=m==='note'?'':'<div><label>类型'+(m==='td'?'（单选）':'（可多选）')+'</label></div><div class="row" style="flex-wrap:wrap">'+kinds.map(function(k){return'<span class="chip '+(s.tags.indexOf(k)>=0?'on':'')+'" data-act="qTag" data-t="'+k+'">'+kLabel(k)+'</span>'}).join('')+'</div>';
+ var needP=s.tags.some(function(g){return g==='订做'||g==='货源'});
+ var dt='<div><label>日期 📅</label><input type="date" id="q_date" value="'+esc(s.date)+'"></div>';
+ var btn='<button class="btn" data-act="saveQuick">保存</button>';
+ if(m==='td'){var td=S.todos.filter(function(x){return x.id===s.tid})[0];btn+='<button class="btn dark" data-act="qDone">'+(td&&td.done?'撤销完成':'标记完成')+'</button>'}
+ if(m==='td'||m==='rec')btn+=s.delAsk?'<button class="btn" style="background:#C2381F" data-act="qDelYes">再点一次确认删除</button>':'<button class="btn ghost" data-act="qDel">删除</button>';
+ sheet('<h2>'+title+'</h2>'+cu+ph+'<div><label>'+(m==='note'?'内容':'备注')+'</label><textarea id="q_note" placeholder="'+(m==='note'?'想记什么就写什么，不用套格式':'例如：想要小一号 / 链子短一点')+'" style="min-height:'+(m==='note'?'160':'80')+'px">'+esc(s.note)+'</textarea></div>'+kd+(needP?qPlaceBox():'')+dt+btn);quickOpen=true}
+function qPhotoIn(d){if($('#sheet')&&quickOpen){syncQ();qState.photo=d;drawQuick()}else{closeSheet();qNew('add');qState.photo=d;drawQuick()}}
+function openTodo(id){var t=S.todos.filter(function(x){return x.id===id})[0];if(!t)return;var rc=t.rid&&S.records.filter(function(r){return r.id===t.rid})[0];closeSheet();qNew('td',{tid:id,cid:t.cid||'',tags:[t.kind],place:t.place||'',date:t.date||'',note:t.text||'',photo:t.photo||(rc&&rc.photo)||'',photo0:(rc&&rc.photo)||'',files:(t.files||[]).slice()});drawQuick()}
+function openRec(id){var r=S.records.filter(function(x){return x.id===id})[0];if(!r)return;var t0=S.todos.filter(function(t){return t.rid===id&&t.date})[0];closeSheet();qNew('rec',{rid:id,cid:r.cid,tags:(r.tags||[]).filter(function(g){return QKINDS.indexOf(g)>=0}),place:r.place||'',date:r.date||(t0&&t0.date)||'',note:r.note||'',photo:r.photo||'',photo0:r.photo||'',files:(r.files||[]).slice()});drawQuick()}
+function qSave(){syncQ();var s=qState,m=s.mode;var note=(s.note||'').trim();
+ var pn='';if(s.tags.some(function(g){return g==='订做'||g==='货源'})){var base=(s.pname||'').trim();if(base)pn=base;else pn=s.place;if(!pn){toast('请选择或输入货源');return}}
+ if(m==='note'&&!note){toast('先写点内容');return}
+ if(m==='todo'&&!s.tags.length&&!note&&!s.photo&&!s.files.length){toast('请拍照、写备注或选类型');return}
+ if(m==='add'&&!s.tags.length&&!note&&!s.photo&&!s.files.length){toast('请拍照、写备注或选类型');return}
+ s.pn=pn;
+ if(s.cid)return qDoSave(s.cid);
+ var nm=(s.cname||'').trim();
+ if(!nm){if(m==='add'||m==='rec'){toast('请先选客户或输入名字');return}return qDoSave('')}
+ if(nm==='1'||nm==='仅咨询')return qDoSave('consult');
+ var hit=/^\d+$/.test(nm)?S.customers.filter(function(c){return String(c.no)===nm})[0]:S.customers.filter(function(c){return c.key.toLowerCase()===nm.toLowerCase()})[0];
+ if(hit)return qDoSave(hit.id);
+ if(/^\d+$/.test(nm)){toast('没有这个编号的客户');return}
+ var nk=qNickOf(nm);
+ if(!nk.sur&&S.customers.some(function(c){return c.nick.toLowerCase()===nk.nick.toLowerCase()})){toast('已有同名客户，请点选，或在名字里加标识');var r0=$('#qres');if(r0)r0.innerHTML=qResHtml();return}
+ findOrCreate(nk.nick,nk.sur,function(c){qDoSave(c.id)})}
+function qDoSave(cid){var s=qState,m=s.mode,now=Date.now();var note=(s.note||'').trim();var pn=s.pn||'';if(pn)addPlace(pn);
+ var tx=note||(s.photo?'(见照片)':'(无备注)');var dt=function(k){return s.date||qDateDef(k)};
+ var one=function(k){return{kind:k,cid:cid,text:(k==='改尺寸'?'改尺寸：':'')+tx,date:dt(k),place:(k==='订做'||k==='货源')?pn:''}};
+ if(m==='td'){var t=S.todos.filter(function(x){return x.id===s.tid})[0];if(t){var k=s.tags[0]||t.kind;var o=one(k);t.kind=k;t.cid=cid;t.text=note||t.text;t.date=s.date;t.place=o.place;t.photo=(s.photo!==s.photo0)?s.photo:(t.photo||'');t.files=s.files.slice();if(!t.created)t.created=now;if(t.rid){var rr=S.records.filter(function(x){return x.id===t.rid})[0];if(rr){var tg2=[];S.todos.forEach(function(x){if(x.rid===t.rid&&QKINDS.indexOf(x.kind)>=0&&tg2.indexOf(x.kind)<0)tg2.push(x.kind)});rr.tags=tg2;rr.inq=(rr.cid==='consult')||(tg2.length>0&&tg2.every(function(g){return g==='咨询'}))}}}}
+ else if(m==='note'){S.todos.push({id:uid(),cid:cid,rid:'',kind:'其他',text:note,date:s.date,place:'',done:false,created:now})}
+ else{var withRec=m==='add'||m==='rec'||s.tags.some(function(g){return g==='改尺寸'||g==='订做'});var rid=s.rid;
+  var tags=(m==='add'||m==='rec')?s.tags.filter(function(g){return QKINDS.indexOf(g)>=0}):s.tags.filter(function(g){return g==='改尺寸'||g==='订做'});
+  if(withRec){if(m==='rec'){var r=S.records.filter(function(x){return x.id===rid})[0];if(r){r.cid=cid;r.note=note;r.tags=tags;r.inq=(cid==='consult')||(tags.length>0&&tags.every(function(g){return g==='咨询'}));r.photo=s.photo;r.files=s.files.slice();r.place=pn;r.date=s.date}}else{rid=uid();S.records.push({id:rid,cid:cid,inq:(cid==='consult')||(tags.length>0&&tags.every(function(g){return g==='咨询'})),note:note,tags:tags,photo:s.photo,files:s.files.slice(),place:pn,date:s.date,createdAt:now,shipped:false})}}
+  var kinds=s.tags.slice();if(m==='todo'&&!kinds.length)kinds=['其他'];
+  if(m==='rec'){S.todos=S.todos.filter(function(t){return!(t.rid===rid&&!t.done&&QKINDS.indexOf(t.kind)>=0&&s.tags.indexOf(t.kind)<0)});S.todos.forEach(function(t){if(t.rid===rid)t.cid=cid})}
+  kinds.forEach(function(k){var o=one(k);var ex=(m==='rec')&&S.todos.filter(function(t){return t.rid===rid&&t.kind===k})[0];
+   if(ex){ex.text=o.text;ex.date=o.date;ex.place=o.place;ex.cid=cid}
+   else S.todos.push({id:uid(),cid:cid,rid:withRec?rid:'',kind:k,text:o.text,date:o.date,place:o.place,photo:withRec?'':s.photo,files:withRec?[]:s.files.slice(),done:false,created:now})})}
+ save();closeSheet();toast('已保存');render()}
 /* ---------- render ---------- */
-function render(){tabsHtml();var h='';
+function render(){normalize();tabsHtml();var h='';
  if(tab==='add')h=vAdd();
  else if(tab==='cust'){var n=view.name;h=n==='cust'?vCust(view.id):n==='cstat'?vCstat(view.id):n==='new'?seg()+vNew():n==='imp'?seg()+'<div style="height:12px"></div>'+vImp():seg()+'<div style="height:12px"></div>'+vList()}
  else if(tab==='todo')h=vTodo();else if(tab==='ship')h=vShip();else h=vMore();
- var qb=$('#qbar');if(tab==='add'){qb.style.display='flex';qb.innerHTML='<div style="display:flex;flex-direction:column;gap:18px;pointer-events:auto"><button class="qb dark" data-act="goNew">+ 新客户</button><button class="qb dark" data-act="srcMgr">货源管理</button><label class="qb red" for="g_gal">图库</label><label class="qb red" for="g_cam">拍照</label></div>'}else{qb.style.display='none';qb.innerHTML=''}
+ var qb=$('#qbar');if(tab==='add'){qb.style.display='flex';qb.innerHTML='<div style="display:flex;flex-direction:column;gap:18px;pointer-events:auto"><button class="qb dark" data-act="goNew">+ 新客户</button><button class="qb dark" data-act="srcMgr">货源管理</button><label class="qb red" for="g_gal">图库</label><label class="qb red" for="g_cam">拍照</label></div>'}else if(tab==='todo'){qb.style.display='flex';qb.innerHTML='<div style="display:flex;flex-direction:column;gap:18px;pointer-events:auto"><button class="qb red" style="width:92px" data-act="tdPhoto">拍照/图库/文件</button><button class="qb dark" style="width:92px" data-act="tdNote">其它</button></div>'}else{qb.style.display='none';qb.innerHTML=''}
  var keep=document.activeElement&&document.activeElement.id;var pos=keep?document.activeElement.selectionStart:0;
  $('#app').innerHTML=h;
  if(keep&&$('#'+keep)){var el=$('#'+keep);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}}
@@ -303,7 +366,7 @@ function parseText(t,f){var m;
  m=t.match(/(?:买家|昵称|用户)[:：]?\s*([^\s，,；;\n]+)/);if(m)f.nick=m[1];
  m=t.match(/(?:收货人|收件人|姓名)[:：]?\s*([一-龥])/);if(m)f.surname=m[1];
  m=t.match(/(?:商品|宝贝|品名)[:：]?\s*([^\n]+)/);if(m)f.title=m[1].trim()}
-function findOrCreate(nick,sur,cb){var key=nick+'·'+sur;var same=S.customers.filter(function(c){return c.nick===nick});var ex=same.filter(function(c){return c.key===key})[0];
+function findOrCreate(nick,sur,cb){var key=sur?nick+'·'+sur:nick;var same=S.customers.filter(function(c){return c.nick===nick});var ex=same.filter(function(c){return c.key===key})[0];
  if(ex)return cb(ex);
  var mk=function(){var aid=uid();var c={id:uid(),no:nextNo(),nick:nick,surname:sur,key:key,age:'',gender:'',note:'',addrs:[{id:aid,type:'default',receiver:'',phone:'',region:'',address:''}],defaultId:aid};S.customers.push(c);cb(c)};
  if(same.length){sheet('<h2>昵称相同，姓不同</h2><div class="muted">已有：'+same.map(function(c){return esc(c.key)}).join('、')+'。是同一个人替朋友买吗？</div><button class="btn dark" id="yes1">是同一个人</button><button class="btn ghost" id="no1">不是，新建一位</button>');
@@ -314,6 +377,7 @@ document.addEventListener('click',function(e){
  var t=e.target.closest('[data-tab],[data-act]');if(!t)return;
  if(t.dataset.tab&&!t.dataset.act){setTab(t.dataset.tab);return}
  var a=t.dataset.act,id=t.dataset.id,aid=t.dataset.aid;
+ if(quickOpen&&/^q[A-Z]/.test(a))syncQ();
  switch(a){
  case'newCust':case'goNew':tab='cust';view={name:'new'};window.scrollTo(0,0);render();break;
  case'seg':view={name:t.dataset.v};if(t.dataset.v!=='list')q='';window.scrollTo(0,0);render();break;
@@ -340,41 +404,43 @@ document.addEventListener('click',function(e){
  case'saveOrder':{var amt=Number(val('o_a'));if(!(amt>0)){toast('请填金额');break}S.orders.push({id:uid(),cid:id,title:val('o_t').trim(),amount:amt,payDate:val('o_d'),refunded:false});save();closeSheet();render();break}
  case'refund':{var o=S.orders.filter(function(x){return x.id===t.dataset.oid})[0];o.refunded=!o.refunded;save();render();break}
  case'quick':sQuick(id);break;
- case'qPick':qState.note=val('q_note');qState.cid=id;drawQuick();break;
- case'qTag':{var n=qState.note=val('q_note');var i=qState.tags.indexOf(t.dataset.t);if(i>=0)qState.tags.splice(i,1);else qState.tags.push(t.dataset.t);drawQuick();break}
- case'qDay':qState.days=Math.max(1,qState.days+Number(t.dataset.n));drawQuick();break;
- case'qPlace':qState.note=val('q_note');qState.place=t.dataset.p;drawQuick();break;
- case'qAddPlace':{var np=val('q_newplace').trim();if(!np){toast('先输入货源名称');break}addPlace(np);qState.place=np;drawQuick();break}
- case'saveQuick':{var s=qState;if(!s.cid){toast('请先选客户');break}var note=val('q_note').trim();var now=Date.now();var np2=val('q_newplace').trim();if(np2){addPlace(np2);s.place=np2}if(s.tags.indexOf('无货·几天后取')>=0&&!s.place){toast('请选择或输入货源');break}
-  var rid=uid();S.records.push({id:rid,cid:s.cid,note:note,tags:s.tags.slice(),photo:s.photo,place:s.place,days:s.days,createdAt:now,shipped:false});
-  var tx=note||'(见照片)';
-  s.tags.forEach(function(g){if(g==='无货·几天后取')S.todos.push({id:uid(),cid:s.cid,rid:rid,kind:'货源',text:tx+'（'+s.days+' 天后取）',date:addDays(ymd(),s.days),place:s.place,done:false});else if(/^改/.test(g))S.todos.push({id:uid(),cid:s.cid,rid:rid,kind:'改款',text:g+'：'+tx,date:addDays(ymd(),2),done:false})});
-  
-  save();closeSheet();toast('已记录');render();break}
+ case'qPick':qState.cid=id;qState.cnew=false;if(id==='consult'&&!qState.tags.length&&(qState.mode==='add'||qState.mode==='rec')){qState.tags=['咨询'];if(!qState.date)qState.date=ymd()};drawQuick();break;
+ case'qUnpick':{var c1=cust(qState.cid);qState.cname=c1?c1.key:'';qState.cid='';qState.cnew=true;drawQuick();break}
+ case'qTag':{var g=t.dataset.t,tg=qState.tags,ix=tg.indexOf(g);if(qState.mode==='td'||qState.mode==='note')qState.tags=[g];else if(ix>=0)tg.splice(ix,1);else tg.push(g);if(ix<0&&!qState.date)qState.date=qDateDef(g);drawQuick();break}
+ case'qPlace':qState.place=t.dataset.p;qState.pname='';drawQuick();break;
+ case'qFileDel':qState.files.splice(Number(t.dataset.i),1);drawQuick();break;
+ case'qDone':{var td1=S.todos.filter(function(x){return x.id===qState.tid})[0];if(td1){td1.done=!td1.done;save()}closeSheet();render();break}
+ case'qDel':qState.delAsk=true;drawQuick();break;
+ case'qDelYes':{var s9=qState;if(s9.mode==='td'){S.todos=S.todos.filter(function(x){return x.id!==s9.tid})}else if(s9.mode==='rec'){var r9=S.records.filter(function(x){return x.id===s9.rid})[0];if(r9&&r9.shipped){toast('已发货的记录不能删除');break}S.records=S.records.filter(function(x){return x.id!==s9.rid});S.todos=S.todos.filter(function(x){return x.rid!==s9.rid})}save();closeSheet();toast('已删除');render();break}
+ case'saveQuick':qSave();break;
+ case'tdOpen':openTodo(t.dataset.tid);break;
+ case'recOpen':openRec(t.dataset.rid);break;
+ case'tdPhoto':closeSheet();qNew('todo');drawQuick();break;
+ case'tdNote':closeSheet();qNew('note',{tags:['其他']});drawQuick();break;
  case'todoF':view.f=t.dataset.k;view.src='';render();break;
  case'todoSrc':view.src=t.dataset.p;view.f='全部';render();break;
- case'placeDone':S.todos.forEach(function(x){if(x.kind==='货源'&&!x.done&&(x.place||'未选货源')===t.dataset.p)x.done=true});save();toast('已标记取齐');render();break;
- case'delPlace':S.places=places().filter(function(p){return p!==t.dataset.p});save();if($('#sheet'))sSources();else render();break;
+ case'placeDone':S.todos.forEach(function(x){if(isPick(x)&&!x.done&&x.place===t.dataset.p)x.done=true});save();toast('已标记取齐');render();break;
+ case'delPlace':{var np0=S.todos.filter(function(x){return isPick(x)&&!x.done&&x.place===t.dataset.p}).length;if(np0){toast('「'+t.dataset.p+'」还有 '+np0+' 件没取完的待办，不能删除');break}}S.places=places().filter(function(p){return p!==t.dataset.p});save();if($('#sheet'))sSources();else render();break;
  case'addPlaceMore':{var v=val('pl_new').trim();if(!v){toast('先输入货源名称');break}addPlace(v);if($('#sheet'))sSources();else render();break}
  case'todoDone':view.done=!view.done;render();break;
  case'tdone':{var td=S.todos.filter(function(x){return x.id===t.dataset.tid})[0];td.done=!td.done;save();render();break}
  case'pickAddr':addrSel[id]=aid;render();break;
  case'openFolder':tab='cust';view={name:'cust',id:id};render();window.scrollTo(0,0);break;
  case'selRec':{view.sel=view.sel||{};view.sel[t.dataset.rid]=!view.sel[t.dataset.rid];var y=window.scrollY;render();window.scrollTo(0,y);break}
- case'selReady':{view.sel=view.sel||{};S.records.forEach(function(r){if(r.cid===id&&!r.shipped&&recReady(r))view.sel[r.id]=true});var y2=window.scrollY;render();window.scrollTo(0,y2);break}
- case'shipNow':{var c4=cust(id);var chosen=S.records.filter(function(r){return r.cid===id&&!r.shipped&&(view.sel||{})[r.id]&&recReady(r)});
+ case'selReady':{view.sel=view.sel||{};S.records.forEach(function(r){if(r.cid===id&&!r.shipped&&!r.inq&&recReady(r))view.sel[r.id]=true});var y2=window.scrollY;render();window.scrollTo(0,y2);break}
+ case'shipNow':{var c4=cust(id);var chosen=S.records.filter(function(r){return r.cid===id&&!r.shipped&&!r.inq&&(view.sel||{})[r.id]&&recReady(r)});
   if(!chosen.length){toast('先勾选要发的商品（等货/改款中的不能发）');break}
   var ad4=addrOf(c4,addrSel[id]);if(!addrOk(ad4)){toast('地址不全，请先补全收件人、手机号、省市区、详细地址');break}
   var code=newCode(c4),now4=Date.now(),snap={receiver:ad4.receiver,phone:ad4.phone,region:ad4.region,address:ad4.address};
   chosen.forEach(function(r){r.shipped=true;r.shipDate=now4;r.bag=code;r.shipAddr=snap;if(view.sel)delete view.sel[r.id]});
-  if(!S.records.some(function(r){return r.cid===id&&!r.shipped}))S.todos.forEach(function(x){if(x.cid===id&&x.kind==='发货')x.done=true});
+  if(!S.records.some(function(r){return r.cid===id&&!r.shipped&&!r.inq}))S.todos.forEach(function(x){if(x.cid===id&&x.kind==='发货')x.done=true});
   save();shipOut=batchText(c4,snap,chosen.length,code);
   sheet('<h2>已装袋</h2><div class="card" style="align-items:center"><span class="muted">把这个写在包装袋上</span><b style="font-size:36px">'+esc(code)+'</b><span class="muted">客户编号 '+c4.no+' · 发货日期 '+mmdd(now4).slice(0,2)+'-'+mmdd(now4).slice(2)+' · '+chosen.length+' 件</span></div><pre id="out">'+esc(shipOut)+'</pre><button class="btn" data-act="copyOut">复制发货文本</button><button class="btn ghost" data-act="closeSheet">完成</button>');render();break}
  case'selBatch':{view.bsel=view.bsel||{};view.bsel[t.dataset.k]=!view.bsel[t.dataset.k];shipOut='';var y3=window.scrollY;render();window.scrollTo(0,y3);break}
  case'exportBatches':{var bl=batchesOf().filter(function(b){return!b.tracking&&(view.bsel||{})[b.key]});if(!bl.length){toast('先勾选要导出的袋子');break}
   shipOut='发货 · 共 '+bl.length+' 单\n\n'+bl.map(function(b){var c5=cust(b.cid);return batchText(c5,b.recs[0].shipAddr||addrOf(c5),b.recs.length,b.bag)}).join('\n\n');render();break}
  case'copyOut':copy(shipOut).then(function(ok){toast(ok?'已复制':'复制失败，请长按文字手动复制')});break;
-{var today=Date.now();S.customers.forEach(function(c){if(!shipSel[c.id])return;var recs=S.records.filter(function(r){return r.cid===c.id&&!r.shipped});if(!recs.length||pending(c.id).length||!addrOk(addrOf(c,addrSel[c.id])))return;var d=mmdd(Math.min.apply(null,recs.map(function(r){return r.createdAt})));recs.forEach(function(r){r.shipped=true;r.shipDate=today;r.bag=d+'-'+c.no});S.todos.forEach(function(x){if(x.cid===c.id&&x.kind==='发货')x.done=true})});shipSel={};shipOut='';save();toast('已标记为已发出');render();break}
+{var today=Date.now();S.customers.forEach(function(c){if(!shipSel[c.id])return;var recs=S.records.filter(function(r){return r.cid===c.id&&!r.shipped&&!r.inq});if(!recs.length||pending(c.id).length||!addrOk(addrOf(c,addrSel[c.id])))return;var d=mmdd(Math.min.apply(null,recs.map(function(r){return r.createdAt})));recs.forEach(function(r){r.shipped=true;r.shipDate=today;r.bag=d+'-'+c.no});S.todos.forEach(function(x){if(x.cid===c.id&&x.kind==='发货')x.done=true})});shipSel={};shipOut='';save();toast('已标记为已发出');render();break}
  case'trackApply':{var txt=val('trk'),hitB=0,hitR=0,miss=[];
   var nz=function(x){return String(x).toLowerCase().replace(/[\s·\-－—_.、]/g,'')};
   var apply=function(b,trk){var any=false;b.recs.forEach(function(r){if(!r.tracking){r.tracking=trk;hitR++;any=true}});if(any)hitB++;return any};
@@ -416,11 +482,13 @@ document.addEventListener('input',function(e){var t=e.target;
  else if(t.dataset&&t.dataset.nf){nfInit()[t.dataset.nf]=t.value}
  else if(t.dataset&&t.dataset.na){var pp=t.dataset.na.split('.');nfInit().addrs[Number(pp[0])][pp[1]]=t.value}
  else if(t.dataset&&t.dataset.f){view.f[t.dataset.f]=t.value}
- else if(t.id==='qq'){var k=t.value.trim().toLowerCase();var r=S.customers.filter(function(c){return String(c.no)===k||c.key.toLowerCase().indexOf(k)>=0}).slice(0,6);$('#qres').innerHTML=r.map(function(c){return'<span class="chip" data-act="qPick" data-id="'+c.id+'">'+c.no+' '+esc(c.key)+'</span>'}).join('')}
+ else if(t.id==='qq'){qInName(t.value)}
+ else if(t.id==='q_newplace'){qInPlace(t.value)}
 });
 document.addEventListener('change',function(e){var t=e.target;
  if(t.dataset&&t.dataset.nf){nfInit()[t.dataset.nf]=t.value}
  if((t.id==='g_cam'||t.id==='g_gal')&&t.files[0]){var gf=t.files[0];t.value='';readImg(gf,function(d){qPhotoIn(d)})}
+ if(t.id==='g_file'&&t.files[0]){var ff=t.files[0];t.value='';if(/^image\//.test(ff.type)){readImg(ff,function(d){qPhotoIn(d)})}else if(ff.size>1200000){toast('文件太大（超过 1.2 MB），请先压缩')}else{var fr2=new FileReader();fr2.onload=function(){if($('#sheet')&&quickOpen)syncQ();else{closeSheet();qNew('todo')}qState.files.push({name:ff.name,data:fr2.result});drawQuick()};fr2.readAsDataURL(ff)}}
  if(t.id==='trk_file'&&t.files[0]){var tf=t.files[0];t.value='';var nm=tf.name.toLowerCase();
   if(/\.xls$/.test(nm)){toast('不支持 .xls，请另存为 .xlsx 或 .csv');}
   else{var fr=new FileReader();fr.onload=function(){var done=function(rows){var L=rowsToLines(rows);view.trkText=L.join('\n');view.trkMsg='已读入 '+L.length+' 行，核对后点“匹配并写回单号”。';render()};
