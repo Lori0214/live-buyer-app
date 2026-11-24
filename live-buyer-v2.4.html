@@ -23,13 +23,14 @@ textarea{min-height:110px}label{font-size:12px;color:#5F5951;display:block;margi
 .tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E1D9;display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
 .tabs div{flex:1;text-align:center;padding:14px 0;font-size:17px;font-weight:800;color:#2B2926}.tabs div.on{color:#C2381F}
 .vh{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-#qbar{position:fixed;right:8px;top:50%;transform:translateY(-50%);z-index:6;display:none;pointer-events:none}
+#qbar{position:fixed;right:8px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:6;display:none;pointer-events:none}
 .qf{width:16mm;height:16mm;border-radius:50%;border:0;color:#fff;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .qf.r{background:rgba(194,56,31,.8)}.qf.k{background:rgba(31,29,27,.8)}
 .qf svg{width:28px;height:28px;pointer-events:none}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cd{position:relative;min-height:44px;border-radius:10px;background:#fff;border:1px solid #ECE8E1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
 .cd.sel{background:#1F1D1B;color:#fff}.cd.today{border-color:#C2381F}.cd.empty{background:none;border:0}.cd.wk{background:none;border:0;min-height:24px;font-size:12px;color:#8A857D;font-weight:600}
+.cd.cdn{flex-direction:column;gap:0;font-size:15px;line-height:1.1}.cd .cn{font-size:9px;font-weight:700;color:#C2381F;line-height:1}.cd.sel .cn{color:#fff}
 .cd .cb{position:absolute;top:2px;right:3px;background:#C2381F;color:#fff;border-radius:9px;min-width:16px;height:16px;font-size:10px;line-height:16px;text-align:center;padding:0 3px}
 .qb{flex:0 0 auto;width:62px;padding:0;height:42px;border-radius:10px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.28);font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:rgba(31,29,27,.8)}.qb.red{background:rgba(194,56,31,.8)}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10;display:flex;align-items:flex-end;justify-content:center}
@@ -192,9 +193,10 @@ function vAdd(){var todoN=S.todos.filter(function(t){return!t.done}).length;
  (rec.length?'<h2>最近加单 <span class="muted" style="font-size:12px;font-weight:400">点进去可查看/修改</span></h2>'+rec.map(function(r){var c=cust(r.cid);return'<div class="card" data-act="recOpen" data-rid="'+r.id+'"><div class="row" style="align-items:flex-start">'+(r.photo?'<img class="photo" src="'+r.photo+'">':'')+'<div class="grow"><b>'+esc(c?c.no+' '+c.key:'')+'</b><div>'+esc(r.note||'（无备注）')+'</div><div class="muted">'+(r.tags||[]).join(' · ')+' '+(r.date?'📅 '+r.date.slice(5)+' ':'')+new Date(r.createdAt).toLocaleDateString()+'</div></div><span class="chip">查看 ›</span></div></div>'}).join(''):'')+'</div>'}
 function nfInit(){if(!view.nf)view.nf={nick:'',surname:'',gender:'',birthday:'',likes:'',note:'',raw:'',shot:'',addrs:[{receiver:'',phone:'',region:'',address:''}]};return view.nf}
 function nfld(l,k,v,ph,ex){return'<div><label>'+l+'</label><input id="nf_'+k+'" data-nf="'+k+'" value="'+esc(v||'')+'" placeholder="'+esc(ph||'')+'" '+(ex||'')+'></div>'}
-function vNew(){var f=nfInit();
- return'<div class="col"><div class="card"><b>粘贴识别</b><textarea id="c_raw" style="min-height:80px" placeholder="粘贴买家昵称、收件人、电话、地址">'+esc(f.raw)+'</textarea><button class="btn dark sm" data-act="cParse">识别并填入下面</button></div>'+
- '<div class="card"><b>截图识别</b><label class="btn dark sm" style="margin:0" for="c_file">选截图</label><input type="file" id="c_file" accept="image/*" class="vh">'+(f.shot?'<img src="'+f.shot+'" style="width:100%;border-radius:10px;border:1px solid #ECE8E1">':'')+'<div class="muted">选截图后显示在这里，对照着填下面。自动识别体验版还没开通。</div></div>'+
+function vNew(){var f=nfInit();var t=view.nt==null?1:view.nt;
+ return'<div class="col"><div class="row">'+['截图','粘贴文字','手动录入'].map(function(n,i){return'<span class="chip '+(t===i?'on':'')+'" style="flex:1;text-align:center;padding:10px" data-act="nfTab" data-t="'+i+'">'+n+'</span>'}).join('')+'</div>'+
+ (t===0?'<div class="card"><b>截图建档</b><div class="muted">选订单详情截图（有收货人、电话、地址那一页），点“识别”自动读出昵称、姓、电话、地址，填到下面核对。首次识别要下载识别组件（约 5 MB），需要联网。</div><label class="btn" style="margin:0">选择截图<input type="file" id="nf_file" accept="image/*" multiple style="display:none"></label>'+(view.nshots||[]).map(function(u){return'<img src="'+u+'" style="width:100%;border-radius:10px;border:1px solid #ECE8E1">'}).join('')+(view.nshots&&view.nshots.length?'<button class="btn" data-act="ocrNew">识别 '+(view.nshotFiles||[]).length+' 张截图</button><div class="muted" id="ocrmsg">'+esc(view.ocrMsg||'')+'</div><button class="btn ghost sm" data-act="clearNShots">清除截图</button>':'')+'</div>':
+ (t===1?'<div class="card"><b>粘贴识别</b><textarea id="c_raw" style="min-height:80px" placeholder="粘贴买家昵称、收件人、电话、地址">'+esc(f.raw)+'</textarea><button class="btn dark sm" data-act="cParse">识别并填入下面</button></div>':''))+
  '<div class="card"><b>客户信息</b>'+nfld('买家昵称','nick',f.nick)+nfld('收货人姓氏（一个字）','surname',f.surname,'','maxlength="1"')+
  '<div><label>性别（选填）</label><select id="nf_gender" data-nf="gender">'+['','女','男'].map(function(g){return'<option value="'+g+'"'+(g===f.gender?' selected':'')+'>'+(g||'未填')+'</option>'}).join('')+'</select></div>'+
  '<div><label>生日（选填）</label><input type="date" id="nf_birthday" data-nf="birthday" value="'+esc(f.birthday)+'"></div>'+nfld('喜好（选填）','likes',f.likes,'例如：喜欢细链、银色')+nfld('备注（选填）','note',f.note)+'</div>'+
@@ -209,10 +211,10 @@ function vCust(id){
  var recs=S.records.filter(function(r){return r.cid===id}).sort(function(a,b){return b.createdAt-a.createdAt});
  var ords=S.orders.filter(function(o){return o.cid===id}).sort(function(a,b){return a.payDate<b.payDate?1:-1});
  var tds=S.todos.filter(function(t){return t.cid===id&&!t.done});
- return'<div class="col"><div class="row"><span class="chip" data-act="back">‹ 返回</span><span class="grow"></span><span class="chip" data-act="editCust" data-id="'+id+'">补录档案</span></div>'+
+ return'<div class="col"><div class="row"><span class="chip" data-act="back">‹ 返回</span></div>'+
  '<div class="row"><span class="no" style="height:44px;min-width:48px;font-size:20px">'+c.no+'</span><h1 class="grow" style="font-size:24px">'+esc(c.key)+'</h1></div>'+
  '<div class="muted">客户编号 '+c.no+'（永久不变，写在袋子上） · 历史 '+st.n+' 单 · 累计 ¥'+st.tot.toFixed(0)+'</div>'+
- '<div class="row"><button class="btn sm" data-act="quick" data-id="'+id+'">快速加单</button><button class="btn sm ghost" data-act="newOrder" data-id="'+id+'">记订单</button></div>'+
+ '<div class="row"><button class="btn sm" data-act="quick" data-id="'+id+'">快速加单</button><button class="btn sm ghost" data-act="newOrder" data-id="'+id+'">记订单</button><button class="btn sm ghost" data-act="editCust" data-id="'+id+'">补录档案</button></div>'+
  shipCard(c)+
  '<div class="card"><b>待办</b>'+(tds.length?tds.map(function(t){return'<div class="row" data-act="tdOpen" data-tid="'+t.id+'"><span class="chip amber">'+kLabel(t.kind)+'</span><span class="grow">'+esc(t.text)+'</span><span class="muted">'+(t.date||'')+'</span></div>'}).join(''):'<div class="muted">没有待办</div>')+'</div>'+
  '<div class="card"><div class="row"><b class="grow">地址</b><span class="chip" data-act="addAddr" data-id="'+id+'">+ 添加</span></div>'+
@@ -241,26 +243,34 @@ function vCstat(id){var c=cust(id);if(!c)return'';var all=liveOrders(function(o)
  '<div class="card"><b>消费趋势</b><div class="muted">近 6 个月 · 每月消费额（元）</div><svg viewBox="0 0 300 130" style="width:100%"><polyline fill="none" stroke="#C2381F" stroke-width="2.5" points="'+pts+'"/>'+mv.map(function(v,i){return'<circle cx="'+(20+i*52)+'" cy="'+(100-v/mm*80)+'" r="4" fill="#fff" stroke="#C2381F" stroke-width="2"/><text x="'+(20+i*52)+'" y="'+(92-v/mm*80)+'" font-size="10" text-anchor="middle" fill="#4A4640">'+(v?v.toFixed(0):'')+'</text><text x="'+(20+i*52)+'" y="122" font-size="10" text-anchor="middle" fill="#5F5951">'+months[i].slice(5)+'月</text>'}).join('')+'</svg></div></div>'}
 function todoRow(t){var c=cust(t.cid);var late=!t.done&&t.date&&t.date<=ymd();var pk=isPick(t);var rc=t.rid&&S.records.filter(function(r){return r.id===t.rid})[0];var ph=t.photo||(rc&&rc.photo)||'';
  return'<div class="card" data-act="tdOpen" data-tid="'+t.id+'"><div class="row" style="align-items:flex-start">'+(ph?'<img class="photo" src="'+ph+'">':'')+'<div class="grow"><div class="row"><span class="chip amber">'+kLabel(t.kind)+'</span><b class="grow">'+esc(pk?t.place:(c?c.no+' '+c.key:'（未指定客户）'))+'</b>'+(t.date?'<span class="chip '+(late?'red':'')+'">📅 '+t.date.slice(5)+(late?' 到期':'')+'</span>':'')+'</div><div>'+(pk&&c?esc(c.no+' '+c.key+'：'):'')+esc(t.text||'')+((t.files&&t.files.length)?' 📎'+t.files.length:'')+'</div></div></div><div class="row"><button class="btn sm '+(t.done?'ghost':'dark')+'" data-act="tdone" data-tid="'+t.id+'">'+(t.done?'撤销完成':'完成')+'</button><span class="muted">点卡片看详情</span></div></div>'}
+function tCalHtml(){var cur=view.tcal||(view.tday||ymd()).slice(0,7);var y=+cur.slice(0,4),m=+cur.slice(5,7);var cnt={};S.todos.forEach(function(t){if(t.date&&!t.done)cnt[t.date]=(cnt[t.date]||0)+1});
+ var off=(new Date(y,m-1,1).getDay()+6)%7,dim=new Date(y,m,0).getDate(),td=ymd(),sel=view.tday||'';
+ var h='<div class="card"><div class="row"><span class="chip" data-act="tcal" data-d="-1">‹</span><b class="grow" style="text-align:center">'+y+'年'+m+'月</b><span class="chip" data-act="tcal" data-d="1">›</span></div><div class="cal">'+['一','二','三','四','五','六','日'].map(function(w){return'<div class="cd wk">'+w+'</div>'}).join('');
+ for(var i=0;i<off;i++)h+='<div class="cd empty"></div>';
+ for(var d=1;d<=dim;d++){var ds=y+'-'+pad(m)+'-'+pad(d);h+='<div class="cd cdn'+(ds===sel?' sel':'')+(ds===td?' today':'')+'" data-act="tday" data-d="'+ds+'">'+d+(cnt[ds]?'<span class="cn">'+cnt[ds]+'</span>':'')+'</div>'}
+ h+='</div><div class="muted">日期下面的小数字 = 当天的待办数量，点日期看当天的事项。</div></div>';
+ if(sel){var ls=S.todos.filter(function(t){return t.date===sel&&(view.done||!t.done)});h+='<h2>'+sel.slice(5).replace('-','月')+'日 · '+ls.length+' 项</h2>'+(ls.length?ls.map(todoRow).join(''):'<div class="muted">这一天没有待办。</div>')}
+ return h}
 function vTodo(){
  var show=view.done,f=view.f||'全部',src=view.src||'',today=ymd();
  var byD=function(a,b){return(a.date||'9')<(b.date||'9')?-1:1};
  var open=S.todos.filter(function(t){return isPick(t)&&!t.done});var names=[],groups={};open.forEach(function(t){if(names.indexOf(t.place)<0)names.push(t.place);(groups[t.place]=groups[t.place]||[]).push(t)});
- var gk=Object.keys(groups).filter(function(p){return(!src||p===src)&&(f==='全部'||groups[p].some(function(t){return t.kind===f}))}).sort(function(a,b){var da=groups[a].map(function(t){return t.date||'9'}).sort()[0],db=groups[b].map(function(t){return t.date||'9'}).sort()[0];return da<db?-1:1});
- var list=src?[]:S.todos.filter(function(t){if(!show&&t.done)return false;if(f!=='全部'&&t.kind!==f)return false;if(isPick(t)&&!t.done)return false;return true}).sort(byD);
- return'<div class="col"><h1>待办</h1><div class="row" style="flex-wrap:wrap">'+['全部'].concat(KINDS).map(function(k){return'<span class="chip '+(f===k&&!src?'on':'')+'" data-act="todoF" data-k="'+k+'">'+kLabel(k)+'</span>'}).join('')+'<span class="chip '+(show?'on':'')+'" data-act="todoDone">显示已完成</span></div>'+
- (names.length?'<div class="muted">按货源看：</div><div class="row" style="flex-wrap:wrap"><span class="chip '+(!src?'on':'')+'" data-act="todoSrc" data-p="">全部货源</span>'+names.map(function(p){return'<span class="chip '+(src===p?'on':'')+'" data-act="todoSrc" data-p="'+esc(p)+'">'+esc(pLabel(p))+' '+groups[p].length+'</span>'}).join('')+'</div>':'')+
+ var gk=f==='日期'?[]:Object.keys(groups).filter(function(p){return(!src||p===src)&&(f==='全部'||groups[p].some(function(t){return t.kind===f}))}).sort(function(a,b){var da=groups[a].map(function(t){return t.date||'9'}).sort()[0],db=groups[b].map(function(t){return t.date||'9'}).sort()[0];return da<db?-1:1});
+ var list=(src||f==='日期')?[]:S.todos.filter(function(t){if(!show&&t.done)return false;if(f!=='全部'&&t.kind!==f)return false;if(isPick(t)&&!t.done)return false;return true}).sort(byD);
+ return'<div class="col"><h1>待办</h1><div class="row" style="flex-wrap:wrap">'+['全部','咨询','订做','改尺寸','发货','其他','日期'].map(function(k){return'<span class="chip '+(f===k&&!src?'on':'')+'" data-act="todoF" data-k="'+k+'">'+kLabel(k)+'</span>'}).join('')+'<span class="chip '+(show?'on':'')+'" data-act="todoDone">显示已完成</span></div>'+
+ (f==='日期'?tCalHtml():'')+(names.length&&f!=='日期'?'<div class="muted">按货源看：</div><div class="row" style="flex-wrap:wrap"><span class="chip '+(!src?'on':'')+'" data-act="todoSrc" data-p="">全部货源</span>'+names.map(function(p){return'<span class="chip '+(src===p?'on':'')+'" data-act="todoSrc" data-p="'+esc(p)+'">'+esc(pLabel(p))+' '+groups[p].length+'</span>'}).join('')+'</div>':'')+
  gk.map(function(p){var g=groups[p].filter(function(t){return f==='全部'||t.kind===f}).sort(byD);var due=g.filter(function(t){return t.date&&t.date<=today}).length;
   return'<div class="card" style="border-color:#E8C98A"><div class="row"><span class="chip amber">货源</span><b class="grow" style="font-size:17px">'+esc(pLabel(p))+' · 取 '+g.length+' 件</b>'+(due?'<span class="chip red">'+due+' 件已到期</span>':'')+'</div>'+g.map(function(t){var c=cust(t.cid);return'<div class="row" data-act="tdOpen" data-tid="'+t.id+'"><span class="grow">'+esc((t.kind==='订做'?'订做 ':'')+(c?c.no+' '+c.key+'：':'')+t.text)+'</span><span class="muted">'+(t.date?'📅 '+t.date.slice(5):'')+'</span></div>'}).join('')+'<button class="btn dark sm" data-act="placeDone" data-p="'+esc(p)+'">'+esc(p)+' 已全部取齐</button></div>'}).join('')+
- (list.length?list.map(todoRow).join(''):(gk.length?'':'<div class="muted">没有待办。右侧浮窗可以拍照/记事。</div>'))+'<div style="height:90px"></div></div>'}
+ (list.length?list.map(todoRow).join(''):(gk.length||f==='日期'?'':'<div class="muted">没有待办。右侧浮窗可以拍照/记事。</div>'))+'<div style="height:90px"></div></div>'}
 
 function vShip(){
- var folders=S.customers.map(function(c){var un=S.records.filter(function(r){return r.cid===c.id&&!r.shipped&&!r.inq});return un.length?{c:c,n:un.length,ok:un.filter(recReady).length}:null}).filter(Boolean);
+ var folders=S.customers.map(function(c){var un=S.records.filter(function(r){return r.cid===c.id&&!r.shipped&&!r.inq});return un.length?{c:c,n:un.length,ok:un.filter(recReady).length}:null}).filter(Boolean);folders=folders.filter(function(f){return f.ok===f.n}).concat(folders.filter(function(f){return f.ok!==f.n}));
  var sk=view.sq||'';var bs=batchesOf().filter(function(b){return!b.tracking});var bsel=view.bsel||{};var nsel=bs.filter(function(b){return bsel[b.key]}).length;
  var out=shipOut?'<div class="card" style="border-color:#E8C98A"><b>合并导出文本</b><pre id="out">'+esc(shipOut)+'</pre><button class="btn" data-act="copyOut">一键复制，发给快递</button></div>':'';
  return'<div class="col"><h1>合并发货</h1><div class="muted">每位客户是一个文件夹：点进客户页，勾选要发的商品，点“点击发货”。系统生成「客户编号-发货日期」，写在包装袋上。</div>'+
  '<div class="card"><b>输入编号或名字找客户</b><input id="sq" placeholder="如 12 或 Sunny" value="'+esc(sk)+'">'+
  (sk?S.customers.filter(function(c){return String(c.no)===sk||c.key.toLowerCase().indexOf(sk.toLowerCase())>=0}).slice(0,3).map(function(c){return'<div class="row" data-act="openFolder" data-id="'+c.id+'"><span class="no">'+c.no+'</span><div class="grow"><b>'+esc(c.key)+'</b><div class="muted">'+c.addrs.map(function(a){return addrLabel(c,a)+'：'+esc(a.region)+' '+esc(a.address)}).join('<br>')+'</div></div></div>'}).join(''):'')+'</div>'+
- '<h2>待发货客户（'+folders.length+'）</h2>'+(folders.length?folders.map(function(f){return'<div class="card" data-act="openFolder" data-id="'+f.c.id+'"><div class="row"><span class="no">'+f.c.no+'</span><b class="grow">'+esc(f.c.key)+'</b>'+(f.ok===f.n?'<span class="chip green">货齐</span>':'<span class="chip amber">可发 '+f.ok+'/'+f.n+'</span>')+'</div><div class="muted">待发 '+f.n+' 件 · 点进去勾选</div></div>'}).join(''):'<div class="muted">没有待发货的客户。</div>')+
+ '<h2>待发货客户（'+folders.length+'）</h2>'+(folders.length?folders.map(function(f){return'<div class="card" data-act="openFolder" data-id="'+f.c.id+'"><div class="row"><span class="no">'+f.c.no+'</span><b class="grow">'+esc(f.c.key)+'</b>'+(f.ok===f.n?'<span class="chip green">货齐</span>':'<span class="chip amber">待办 '+f.ok+'/'+f.n+'</span>')+'</div><div class="muted">待发 '+f.n+' 件 · 点进去勾选</div></div>'}).join(''):'<div class="muted">没有待发货的客户。</div>')+
  '<h2>已装袋 · 待回传单号（'+bs.length+'）</h2>'+(bs.length?bs.map(function(b){var c=cust(b.cid);return'<div class="card" style="'+(bsel[b.key]?'border-color:#C2381F':'')+'"><div class="row"><span class="chip ck '+(bsel[b.key]?'on':'')+'" data-act="selBatch" data-k="'+esc(b.key)+'">'+(bsel[b.key]?'✓':'')+'</span><b class="grow">'+esc(b.bag)+' · '+esc(c?c.key:'')+'</b><span class="muted">'+b.recs.length+' 件</span></div><div class="muted">'+b.recs.map(function(r){return esc(r.note||'（无备注）')}).join('、')+'</div></div>'}).join('')+'<button class="btn" data-act="exportBatches">合并导出选中的 '+nsel+' 袋</button>':'<div class="muted">没有等待回传单号的袋子。</div>')+out+
  '<div class="card"><b>回传单号</b><div class="muted">把快递返回的整段文字粘进来。系统按备注里的「客户编号-发货日期」（如 12-1121）找到是哪一袋，把单号写到这一袋的所有商品上；备注丢了，就按客户昵称+姓（如 wendy-王）对上客户的最近一袋。</div><label class="btn ghost" for="trk_file" style="margin:0">导入 Excel / CSV 表格</label><input type="file" id="trk_file" accept=".xlsx,.csv,.txt" class="vh"><div class="muted">支持 .xlsx 和 .csv（.xls 请先另存为 .xlsx）。表格每一行的各列会合并成一行再匹配。</div><textarea id="trk" placeholder="12-1121 SF1234567890123">'+esc(view.trkText||'')+'</textarea><button class="btn dark" data-act="trackApply">匹配并写回单号</button>'+(view.trkMsg?'<div class="muted">'+esc(view.trkMsg)+'</div>':'')+'</div></div>'}
 
@@ -439,15 +449,21 @@ function impFound(list){view.found=list;view.foundIdx=0;view.f=impFill(list[0]);
 function foundHtml(){var a=view.found||[];if(!a.length)return'';return'<div class="card"><b>识别到 '+a.length+' 单，逐单核对后保存</b>'+a.map(function(o,i){return'<div class="row" style="align-items:flex-start"><div class="grow"><b>'+esc((o.nick||'（无昵称）')+(o.surname?'-'+o.surname:''))+'</b><div>'+esc(o.title||'（无商品名）')+' · ¥'+esc(o.amount||'?')+' · '+esc(o.payDate||'未识别日期')+'</div></div><button class="btn sm '+(view.foundIdx===i?'dark':'ghost')+'" data-act="impUse" data-i="'+i+'">'+(view.foundIdx===i?'核对中':'填入核对')+'</button></div>'}).join('')+'</div>'}
 function ocrMsg(m){var e=$('#ocrmsg');if(e)e.textContent=m;view.ocrMsg=m}
 function ocrLoad(cb,fail){if(window.Tesseract)return cb();var bases=['https://cdn.jsdelivr.net/npm/','https://fastly.jsdelivr.net/npm/','https://unpkg.com/'];var i=0;(function next(){if(i>=bases.length)return fail();var b=bases[i++];window.OCRBASE=b;var sc=document.createElement('script');sc.src=b+'tesseract.js@7.0.0/dist/tesseract.min.js';sc.onload=function(){cb()};sc.onerror=function(){sc.remove();next()};document.head.appendChild(sc)})()}
+function ocrSet(w){try{return w.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'})}catch(e){return Promise.resolve()}}
 function ocrWorker(cb,fail){if(window.OCRW)return cb(window.OCRW);var b=window.OCRBASE||'https://cdn.jsdelivr.net/npm/';ocrMsg('正在准备识别组件（首次约 5 MB）…');var cur=0;
- window.Tesseract.createWorker('chi_sim',1,{workerPath:b+'tesseract.js@7.0.0/dist/worker.min.js',corePath:b+'tesseract.js-core@7.0.0',langPath:b+'@tesseract.js-data/chi_sim@1.0.0/4.0.0_best_int',logger:function(m){if(m&&m.status==='recognizing text')ocrMsg('正在识别第 '+(window.OCRCUR||1)+'/'+(window.OCRTOT||1)+' 张… '+Math.round((m.progress||0)*100)+'%');else if(m&&m.status&&m.progress!=null)ocrMsg('正在准备识别组件… '+Math.round(m.progress*100)+'%')}}).then(function(w){window.OCRW=w;cb(w)}).catch(function(){fail()})}
-function ocrRun(){var fs=view.shotFiles||[];if(!fs.length){toast('请先选订单截图');return}
+ window.Tesseract.createWorker('chi_sim',1,{workerPath:b+'tesseract.js@7.0.0/dist/worker.min.js',corePath:b+'tesseract.js-core@7.0.0',langPath:b+'@tesseract.js-data/chi_sim@1.0.0/4.0.0_best_int',logger:function(m){if(m&&m.status==='recognizing text')ocrMsg('正在识别第 '+(window.OCRCUR||1)+'/'+(window.OCRTOT||1)+' 张… '+Math.round((m.progress||0)*100)+'%');else if(m&&m.status&&m.progress!=null)ocrMsg('正在准备识别组件… '+Math.round(m.progress*100)+'%')}}).then(function(w){return Promise.resolve(ocrSet(w)).catch(function(){}).then(function(){window.OCRW=w;cb(w)})}).catch(function(){fail()})}
+function ocrPrep(f,cb){try{var u=URL.createObjectURL(f),im=new Image();im.onload=function(){try{var k=Math.min(1,2600/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');x.drawImage(im,0,0,w,h);var d=x.getImageData(0,0,w,h),a=d.data,hist=new Array(256).fill(0),n=w*h,g;for(var p=0;p<a.length;p+=4){g=(a[p]*299+a[p+1]*587+a[p+2]*114)/1000|0;a[p]=g;hist[g]++}var lo=0,hi=255,c1=0;while(lo<254&&(c1+=hist[lo])<n*.01)lo++;c1=0;while(hi>1&&(c1+=hist[hi])<n*.01)hi--;var sc=255/Math.max(1,hi-lo);for(p=0;p<a.length;p+=4){g=Math.max(0,Math.min(255,(a[p]-lo)*sc));a[p]=a[p+1]=a[p+2]=g}x.putImageData(d,0,0);URL.revokeObjectURL(u);cb(c)}catch(e){cb(f)}};im.onerror=function(){cb(f)};im.src=u}catch(e){cb(f)}}
+function nfFromText(raw){var f=nfInit();var tx=ocrNorm(raw||'');f.raw=tx;var P=parseAddr(tx);var L=ocrOrders(tx)[0]||{};var m=tx.match(/([一-龥]{1,4})\s*(先生|女士)/);var got=0;
+ if(L.nick){f.nick=L.nick;got++}if(L.surname){f.surname=L.surname}else if(m){f.surname=m[1].charAt(0)}else if(P.surname){f.surname=P.surname}
+ var a0=f.addrs[0];if(m)a0.receiver=m[1]+m[2];else if(P.receiver)a0.receiver=P.receiver;if(P.phone){a0.phone=P.phone;got++}if(P.region){a0.region=P.region;got++}if(P.address)a0.address=P.address;
+ view.nt=got?2:1;render();toast(got?'已识别并填入，请核对':'没认出信息，识别的文字已放进“粘贴文字”，可修改后再识别')}
+function ocrRun(mode){var fs=(mode==='new'?view.nshotFiles:view.shotFiles)||[];if(!fs.length){toast('请先选订单截图');return}
  var fail=function(){ocrMsg('');toast('识别组件没下载成功（需要联网）。可改用“粘贴文字”或手动填写')};
  ocrMsg('正在加载识别组件…');
  ocrLoad(function(){ocrWorker(function(w){var all=[],txt=[],i=0;window.OCRTOT=fs.length;
-  (function nx(){if(i>=fs.length){var seen={},res=all.filter(function(o){var k=[o.nick,o.title,o.amount,o.payDate].join('|');if(seen[k])return false;seen[k]=1;return true});ocrMsg('');view.raw=txt.join('\n');
+  (function nx(){if(i>=fs.length){if(mode==='new'){ocrMsg('');nfFromText(txt.join('\n'));return}var seen={},res=all.filter(function(o){var k=[o.nick,o.title,o.amount,o.payDate].join('|');if(seen[k])return false;seen[k]=1;return true});ocrMsg('');view.raw=txt.join('\n');
    if(res.length){impFound(res);toast('识别到 '+res.length+' 单，请核对')}else{view.t=1;render();toast('没认出订单，识别出的文字已放进“粘贴文字”，可修改后再拆')}return}
-   window.OCRCUR=i+1;w.recognize(fs[i]).then(function(r){var tx=r.data.text||'';txt.push(tx);ocrOrders(tx).forEach(function(o){all.push(o)});i++;nx()}).catch(function(){fail()})})()},fail)},fail)}
+   window.OCRCUR=i+1;ocrPrep(fs[i],function(src){w.recognize(src).then(function(r){var tx=r.data.text||'';txt.push(tx);ocrOrders(tx).forEach(function(o){all.push(o)});i++;nx()}).catch(function(){fail()})})})()},fail)},fail)}
 function findOrCreate(nick,sur,cb){var key=sur?nick+'-'+sur:nick;var same=S.customers.filter(function(c){return c.nick.toLowerCase()===nick.toLowerCase()});var ex=same.filter(function(c){return c.key.toLowerCase()===key.toLowerCase()})[0];
  if(ex)return cb(ex);
  var mk=function(){var aid=uid();var c={id:uid(),no:nextNo(),nick:nick,surname:sur,key:key,age:'',gender:'',note:'',addrs:[{id:aid,type:'default',receiver:'',phone:'',region:'',address:''}],defaultId:aid};S.customers.push(c);cb(c)};
@@ -465,6 +481,9 @@ document.addEventListener('click',function(e){
  case'seg':view={name:t.dataset.v};if(t.dataset.v!=='list')q='';window.scrollTo(0,0);render();break;
  case'srcMgr':sSources();break;
  case'quickFor':sQuick(id);break;
+ case'nfTab':view.nt=Number(t.dataset.t);render();break;
+ case'ocrNew':ocrRun('new');break;
+ case'clearNShots':view.nshots=[];view.nshotFiles=[];render();break;
  case'nfAddAddr':nfInit().addrs.push({receiver:'',phone:'',region:'',address:''});render();break;
  case'nfDelAddr':nfInit().addrs.splice(Number(t.dataset.i),1);render();break;
  case'openCust':view={name:'cust',id:id};render();window.scrollTo(0,0);break;
@@ -509,6 +528,8 @@ case'mark':sMark(t.dataset.oid);break;
  case'recOpen':openRec(t.dataset.rid);break;
  case'tdPhoto':closeSheet();qNew('todo');drawQuick();break;
  case'tdNote':closeSheet();qNew('note',{tags:['其他']});drawQuick();break;
+ case'tcal':{var cc0=view.tcal||(view.tday||ymd()).slice(0,7);var d0=new Date(+cc0.slice(0,4),+cc0.slice(5,7)-1+Number(t.dataset.d),1);view.tcal=d0.getFullYear()+'-'+pad(d0.getMonth()+1);render();break}
+ case'tday':view.tday=t.dataset.d;render();break;
  case'todoF':view.f=t.dataset.k;view.src='';render();break;
  case'todoSrc':view.src=t.dataset.p;view.f='全部';render();break;
  case'placeDone':S.todos.forEach(function(x){if(isPick(x)&&!x.done&&x.place===t.dataset.p)x.done=true});save();toast('已标记取齐');render();break;
@@ -588,7 +609,7 @@ document.addEventListener('change',function(e){var t=e.target;
   if(/\.xls$/.test(nm)){toast('不支持 .xls，请另存为 .xlsx 或 .csv');}
   else{var fr=new FileReader();fr.onload=function(){var done=function(rows){var L=rowsToLines(rows);view.trkText=L.join('\n');view.trkMsg='已读入 '+L.length+' 行，核对后点“匹配并写回单号”。';render()};
    if(/\.xlsx$/.test(nm)){if(typeof DecompressionStream==='undefined'){toast('浏览器版本太旧，请另存为 .csv 后导入');return}readXlsx(fr.result).then(done,function(){toast('读取失败，请另存为 .csv 再试')})}else done(readCsv(fr.result))};fr.readAsArrayBuffer(tf)}}
- if(t.id==='c_file'&&t.files[0]){var cf=t.files[0];t.value='';readImg(cf,function(d){nfInit().shot=d;render()})}
+ if(t.id==='nf_file'&&t.files.length){var fs3=Array.prototype.slice.call(t.files);view.nshots=view.nshots||[];view.nshotFiles=(view.nshotFiles||[]).concat(fs3);var left3=fs3.length;fs3.forEach(function(f){readImg(f,function(d){view.nshots.push(d);if(--left3===0)render()})})}
  if(t.id==='imp_file'&&t.files.length){var fs=Array.prototype.slice.call(t.files);view.shots=view.shots||[];view.shotFiles=(view.shotFiles||[]).concat(fs);var left=fs.length;fs.forEach(function(f){readImg(f,function(d){view.shots.push(d);if(--left===0)render()})})}
  if(t.id==='c_file'&&t.files[0]){readImg(t.files[0],function(d){var p=$('#c_prev');if(p)p.innerHTML='<img src="'+d+'" style="width:100%;border-radius:10px;border:1px solid #ECE8E1"><div class="muted">对照截图，把买家昵称、收件人、电话、地址填到下面。</div>'})}
 });
