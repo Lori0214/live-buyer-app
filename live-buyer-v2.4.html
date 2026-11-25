@@ -26,14 +26,14 @@ textarea{min-height:110px}label{font-size:12px;color:#5F5951;display:block;margi
 #qbar{position:fixed;right:8px;top:50%;transform:translateY(-50%);z-index:6;display:none;pointer-events:none}
 .qf{width:16mm;height:16mm;border-radius:50%;border:0;color:#fff;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .qf.s{width:11mm;height:11mm}.qf.s svg{width:20px;height:20px}
-.qf.r{background:rgba(194,56,31,.1);border:1.5px solid rgba(194,56,31,.45);color:#B8301A}.qf.k{background:rgba(31,29,27,.1);border:1.5px solid rgba(31,29,27,.4);color:#1F1D1B}.qf{box-shadow:none}
+.qf.r{background:rgba(194,56,31,.2);border:1.5px solid rgba(194,56,31,.45);color:#B8301A}.qf.k{background:rgba(31,29,27,.2);border:1.5px solid rgba(31,29,27,.4);color:#1F1D1B}.qf{box-shadow:none}
 .qf svg{width:28px;height:28px;pointer-events:none}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cd{position:relative;min-height:44px;border-radius:10px;background:#fff;border:1px solid #ECE8E1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
 .cd.sel{background:#1F1D1B;color:#fff}.cd.today{border-color:#C2381F}.cd.empty{background:none;border:0}.cd.wk{background:none;border:0;min-height:24px;font-size:12px;color:#8A857D;font-weight:600}
 .cd.cdn{flex-direction:column;gap:0;font-size:15px;line-height:1.1}.cd .cn{font-size:9px;font-weight:700;color:#C2381F;line-height:1}.cd.sel .cn{color:#fff}
 .cd .cb{position:absolute;top:2px;right:3px;background:#C2381F;color:#fff;border-radius:9px;min-width:16px;height:16px;font-size:10px;line-height:16px;text-align:center;padding:0 3px}
-.qb{flex:0 0 auto;width:62px;padding:0;height:42px;border-radius:10px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.28);font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:rgba(31,29,27,.1);border:1.5px solid rgba(31,29,27,.4);color:#1F1D1B}.qb.red{background:rgba(194,56,31,.1);border:1.5px solid rgba(194,56,31,.45);color:#B8301A}.qb{box-shadow:none}
+.qb{flex:0 0 auto;width:62px;padding:0;height:42px;border-radius:10px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.28);font-weight:700;display:flex;align-items:center;justify-content:center;border:0;color:#fff;margin:0}.qb.dark{background:rgba(31,29,27,.2);border:1.5px solid rgba(31,29,27,.4);color:#1F1D1B}.qb.red{background:rgba(194,56,31,.2);border:1.5px solid rgba(194,56,31,.45);color:#B8301A}.qb{box-shadow:none}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10;display:flex;align-items:flex-end;justify-content:center}
 .sheet>div>*{flex-shrink:0}
 .sheet>div{background:#F6F4F1;width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px}
@@ -444,7 +444,7 @@ function ocrOrders(raw){
   var m=lines[i].match(/下单时间\s*(\d{4}-\d{2}-\d{2})/);var date=m[1];
   var rest=(rawLines[i].replace(/\s+/g,' ').split(/\d{2}:\d{2}:\d{2}/)[1]||'').trim();
   var tk=rest.split(' ').filter(Boolean);
-  while(tk.length>1&&tk[0].length===1&&(!/[一-龥A-Za-z0-9]/.test(tk[0])||tk.length>=4))tk.shift();
+  while(tk.length>1&&tk[0].length===1)tk.shift();
   var nick=tk.join('');
   var prev=k?anchors[k-1]+4:0;var st=-1;for(var j=i-1;j>=Math.max(prev,i-9);j--){if(/待发货|承诺/.test(lines[j])){st=j;break}}
   var pre=lines.slice(st+1,i);var title='',unit=0,qty=1,paid=0;
@@ -457,7 +457,7 @@ function ocrOrders(raw){
   var all=lines.join('\n');var am=all.match(/实付\s*[¥Y￥]?\s*(\d+(?:\.\d+)?)/);var ti='',qt=1,u=0;
   var oi=-1;lines.forEach(function(l,i){if(oi<0&&/订单号/.test(l))oi=i});
   if(oi>=0)for(var a=oi+1;a<lines.length;a++){var l2=lines[a];if(!ti&&(l2.match(/[一-龥]/g)||[]).length>=3&&!NOISE.test(l2)&&!/发货/.test(l2)){ti=l2}var pm2=l2.match(P);if(pm2&&ti){u=Number(pm2[1]);qt=Number(pm2[2]);break}}
-  var nm=all.match(/([一-龥]{1,3})\s*(?:先生|女士)/);
+  var nm=all.match(/([一-龥]{1,3})\s*(?:先生|女士)/);if(nm)nm[1]=nm[1].replace(/^收(?=[一-龥])/,'');
   if(am||ti)out.push({nick:'',surname:nm?nm[1].charAt(0):'',title:ti+(qt>1?' ×'+qt:''),amount:am?String(Number(am[1])):(u?String(u*qt):''),payDate:''})}
  return out}
 
@@ -479,16 +479,59 @@ function ocrSet(w){try{return w.setParameters({tessedit_pageseg_mode:'6',preserv
 function ocrWorker(cb,fail){if(window.OCRW)return cb(window.OCRW);var b=window.OCRBASE||'https://cdn.jsdelivr.net/npm/';ocrMsg('正在准备识别组件（首次约 5 MB）…');var cur=0;
  window.Tesseract.createWorker('chi_sim',1,{workerPath:b+'tesseract.js@7.0.0/dist/worker.min.js',corePath:b+'tesseract.js-core@7.0.0',langPath:b+'@tesseract.js-data/chi_sim@1.0.0/4.0.0_best_int',logger:function(m){if(m&&m.status==='recognizing text')ocrMsg('正在识别第 '+(window.OCRCUR||1)+'/'+(window.OCRTOT||1)+' 张… '+Math.round((m.progress||0)*100)+'%');else if(m&&m.status&&m.progress!=null)ocrMsg('正在准备识别组件… '+Math.round(m.progress*100)+'%')}}).then(function(w){return Promise.resolve(ocrSet(w)).catch(function(){}).then(function(){window.OCRW=w;cb(w)})}).catch(function(){fail()})}
 function ocrPrep(f,cb){try{var u=URL.createObjectURL(f),im=new Image();im.onload=function(){try{var k=Math.min(1,2600/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');x.drawImage(im,0,0,w,h);var d=x.getImageData(0,0,w,h),a=d.data,hist=new Array(256).fill(0),n=w*h,g;for(var p=0;p<a.length;p+=4){g=(a[p]*299+a[p+1]*587+a[p+2]*114)/1000|0;a[p]=g;hist[g]++}var lo=0,hi=255,c1=0;while(lo<254&&(c1+=hist[lo])<n*.01)lo++;c1=0;while(hi>1&&(c1+=hist[hi])<n*.01)hi--;var sc=255/Math.max(1,hi-lo);for(p=0;p<a.length;p+=4){g=Math.max(0,Math.min(255,(a[p]-lo)*sc));a[p]=a[p+1]=a[p+2]=g}x.putImageData(d,0,0);URL.revokeObjectURL(u);cb(c)}catch(e){cb(f)}};im.onerror=function(){cb(f)};im.src=u}catch(e){cb(f)}}
-function nfFromText(raw){var f=nfInit();var tx=ocrNorm(raw||'');f.raw=tx;var P=parseAddr(tx);var L=ocrOrders(tx)[0]||{};var m=tx.match(/([一-龥]{1,4})\s*(先生|女士)/);var got=0;
+function nfFromText(raw){var f=nfInit();var tx=ocrNorm(raw||'');f.raw=tx;var P=parseAddr(tx);var L=ocrOrders(tx)[0]||{};var m=tx.match(/([一-龥]{1,3})\s*(先生|女士)/);if(m)m[1]=m[1].replace(/^收(?=[一-龥])/,'');var got=0;
  if(L.nick){f.nick=L.nick;got++}if(L.surname){f.surname=L.surname}else if(m){f.surname=m[1].charAt(0)}else if(P.surname){f.surname=P.surname}
  var a0=f.addrs[0];if(m)a0.receiver=m[1]+m[2];else if(P.receiver)a0.receiver=P.receiver;if(P.phone){a0.phone=P.phone;got++}if(P.region){a0.region=P.region;got++}if(P.address)a0.address=P.address;
  view.nt=got?2:1;render();toast(got?'已识别并填入，请核对':'没认出信息，识别的文字已放进“粘贴文字”，可修改后再识别')}
+
+/* ===== 中文识别：PaddleOCR（PP-OCRv4）在浏览器里运行；组件首次下载约 32 MB，之后浏览器会缓存 ===== */
+var PPR={};
+(function(root){
+function resizeRGB(src,sw,sh,dw,dh){var out=new Uint8Array(dw*dh*3),xr=sw/dw,yr=sh/dh;
+ for(var y=0;y<dh;y++){var fy=(y+.5)*yr-.5,y0=Math.max(0,Math.floor(fy)),y1=Math.min(sh-1,y0+1),wy=Math.min(1,Math.max(0,fy-y0));
+  for(var x=0;x<dw;x++){var fx=(x+.5)*xr-.5,x0=Math.max(0,Math.floor(fx)),x1=Math.min(sw-1,x0+1),wx=Math.min(1,Math.max(0,fx-x0));
+   for(var c=0;c<3;c++){var a=src[(y0*sw+x0)*3+c],b=src[(y0*sw+x1)*3+c],d=src[(y1*sw+x0)*3+c],e=src[(y1*sw+x1)*3+c];
+    out[(y*dw+x)*3+c]=(a*(1-wx)+b*wx)*(1-wy)+(d*(1-wx)+e*wx)*wy}}}return out}
+function cropRGB(src,sw,sh,x0,y0,x1,y1){x0=Math.max(0,Math.floor(x0));y0=Math.max(0,Math.floor(y0));x1=Math.min(sw,Math.ceil(x1));y1=Math.min(sh,Math.ceil(y1));var w=x1-x0,h=y1-y0,out=new Uint8Array(w*h*3);for(var y=0;y<h;y++)out.set(src.subarray(((y0+y)*sw+x0)*3,((y0+y)*sw+x1)*3),y*w*3);return{d:out,w:w,h:h}}
+function detBoxes(prob,W,H,sx,sy,opt){var th=opt.th||0.3,minScore=opt.minScore||0.6,lab=new Int32Array(W*H),stack=new Int32Array(W*H),boxes=[],id=0;
+ for(var i=0;i<W*H;i++){if(prob[i]>th&&!lab[i]){id++;var sp=0,minx=W,maxx=0,miny=H,maxy=0,area=0,sum=0;stack[sp++]=i;lab[i]=id;
+  while(sp){var p=stack[--sp],px=p%W,py=(p/W)|0;area++;sum+=prob[p];if(px<minx)minx=px;if(px>maxx)maxx=px;if(py<miny)miny=py;if(py>maxy)maxy=py;
+   for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){var nx=px+dx,ny=py+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;var q=ny*W+nx;if(prob[q]>th&&!lab[q]){lab[q]=id;stack[sp++]=q}}}
+  var bw=maxx-minx+1,bh=maxy-miny+1;if(Math.min(bw,bh)<3||area<10)continue;if(sum/area<minScore)continue;
+  var d=bw*bh*(opt.unclip||1.6)/(2*(bw+bh));boxes.push([(minx-d)*sx,(miny-d)*sy,(maxx+1+d)*sx,(maxy+1+d)*sy])}}return boxes}
+async function ocr(ort,det,rec,dict,rgb,w,h,opt){opt=opt||{};var lim=opt.limit||1280,sc=Math.min(1,lim/Math.max(w,h));
+ var nw=Math.max(32,Math.round(w*sc/32)*32),nh=Math.max(32,Math.round(h*sc/32)*32),im=resizeRGB(rgb,w,h,nw,nh),T=new Float32Array(3*nw*nh),mean=[.485,.456,.406],std=[.229,.224,.225],bgr=opt.rgbOrder?[0,1,2]:[2,1,0];
+ for(var c=0;c<3;c++)for(var i=0;i<nw*nh;i++)T[c*nw*nh+i]=(im[i*3+bgr[c]]/255-mean[c])/std[c];
+ var o=await det.run({[det.inputNames[0]]:new ort.Tensor('float32',T,[1,3,nh,nw])});var prob=o[det.outputNames[0]].data;
+ var boxes=detBoxes(prob,nw,nh,w/nw,h/nh,opt);var res=[];
+ for(var b=0;b<boxes.length;b++){if(opt.onProgress)opt.onProgress(b+1,boxes.length);var bx=boxes[b],cr=cropRGB(rgb,w,h,bx[0],bx[1],bx[2],bx[3]);if(cr.w<4||cr.h<4)continue;
+  var rh=48,rw=Math.min(1600,Math.max(16,Math.ceil(48*cr.w/cr.h))),ri=resizeRGB(cr.d,cr.w,cr.h,rw,rh),R=new Float32Array(3*rh*rw);
+  for(var c2=0;c2<3;c2++)for(var j=0;j<rw*rh;j++)R[c2*rw*rh+j]=(ri[j*3+bgr[c2]]/255-.5)/.5;
+  var ro=await rec.run({[rec.inputNames[0]]:new ort.Tensor('float32',R,[1,3,rh,rw])});var rd=ro[rec.outputNames[0]],steps=rd.dims[1],cls=rd.dims[2],data=rd.data,txt='',last=0,conf=0,n=0;
+  for(var t=0;t<steps;t++){var mx=0,mi=0;for(var k=0;k<cls;k++){var v=data[t*cls+k];if(v>data[t*cls+mi])mi=k}mx=data[t*cls+mi];if(mi!==0&&mi!==last){txt+=(mi-1<dict.length?dict[mi-1]:' ');conf+=mx;n++}last=mi}
+  if(txt)res.push({box:bx,text:txt,score:n?conf/n:0})}
+ res.sort(function(a,b){return a.box[1]-b.box[1]});var rows=[];res.forEach(function(r){var cy=(r.box[1]+r.box[3])/2,hh=r.box[3]-r.box[1],row=rows.filter(function(x){return Math.abs(x.cy-cy)<hh*.5})[0];if(row){row.items.push(r);row.cy=(row.cy+cy)/2}else rows.push({cy:cy,items:[r]})});
+ return{lines:res,text:rows.map(function(x){return x.items.sort(function(a,b){return a.box[0]-b.box[0]}).map(function(i){return i.text}).join(' ')}).join('\n')}}
+root.PPOCR={ocr:ocr};})(PPR);
+
+var PPBASES=['https://cdn.jsdelivr.net/npm/','https://fastly.jsdelivr.net/npm/','https://testingcf.jsdelivr.net/npm/','https://gcore.jsdelivr.net/npm/','https://unpkg.com/'],PPV='1.31.1',PPE=null;
+function ppScript(base){return new Promise(function(ok,no){if(window.ort)return ok();var sc=document.createElement('script');sc.src=base+'onnxruntime-web@'+PPV+'/dist/ort.wasm.min.js';var to=setTimeout(function(){sc.remove();no(new Error('timeout'))},20000);sc.onload=function(){clearTimeout(to);ok()};sc.onerror=function(){clearTimeout(to);sc.remove();no(new Error('load'))};document.head.appendChild(sc)})}
+function ppFetch(url,label,buf){return fetch(url).then(function(r){if(!r.ok)throw new Error('http '+r.status);var tot=Number(r.headers.get('content-length'))||0;if(!r.body||!r.body.getReader)return buf?r.arrayBuffer():r.text();var rd=r.body.getReader(),parts=[],got=0;return(function pump(){return rd.read().then(function(x){if(x.done){var out=new Uint8Array(got),o=0;parts.forEach(function(c){out.set(c,o);o+=c.length});return buf?out.buffer:new TextDecoder().decode(out)}parts.push(x.value);got+=x.value.length;ocrMsg('下载识别组件：'+label+' '+(got/1048576).toFixed(1)+(tot?'/'+(tot/1048576).toFixed(1):'')+' MB');return pump()})})()})}
+function ppEngine(ok,no){if(PPE)return ok(PPE);var i=0;(function next(){if(i>=PPBASES.length)return no();var base=PPBASES[i++];ocrMsg('正在连接识别组件（'+base.replace('https://','').split('/')[0]+'）…');
+ ppScript(base).then(function(){var o=window.ort;o.env.wasm.wasmPaths=base+'onnxruntime-web@'+PPV+'/dist/';o.env.wasm.numThreads=1;var M=base+'@gutenye/ocr-models@1.4.9/assets/';
+  return Promise.all([ppFetch(M+'ch_PP-OCRv4_det_infer.onnx','检测模型',true),ppFetch(M+'ch_PP-OCRv4_rec_infer.onnx','识别模型',true),ppFetch(M+'ppocr_keys_v1.txt','字典',false)]).then(function(a){ocrMsg('正在启动识别引擎…');var dict=a[2].split('\n');if(dict[dict.length-1]==='')dict.pop();return Promise.all([o.InferenceSession.create(a[0],{executionProviders:['wasm']}),o.InferenceSession.create(a[1],{executionProviders:['wasm']})]).then(function(ss){PPE={det:ss[0],rec:ss[1],dict:dict};ok(PPE)})})}).catch(function(){next()})})()}
+function ppRGB(f,cb,er){try{var u=URL.createObjectURL(f),im=new Image();im.onload=function(){try{var k=Math.min(1,2600/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');x.drawImage(im,0,0,w,h);var a=x.getImageData(0,0,w,h).data,rgb=new Uint8Array(w*h*3);for(var i=0,j=0;i<a.length;i+=4,j+=3){rgb[j]=a[i];rgb[j+1]=a[i+1];rgb[j+2]=a[i+2]}URL.revokeObjectURL(u);cb(rgb,w,h)}catch(e){er()}};im.onerror=er;im.src=u}catch(e){er()}}
+function ocrFinish(mode,txt,all){if(mode==='new'){ocrMsg('');nfFromText(txt.join('\n'));return}var seen={},res=all.filter(function(o){var k=[o.nick,o.title,o.amount,o.payDate].join('|');if(seen[k])return false;seen[k]=1;return true});ocrMsg('');view.raw=txt.join('\n');
+ if(res.length){impFound(res);toast('识别到 '+res.length+' 单，请核对')}else{view.t=1;render();toast('没认出订单，识别出的文字已放进“粘贴文字”，可修改后再拆')}}
 function ocrRun(mode){var fs=(mode==='new'?view.nshotFiles:view.shotFiles)||[];if(!fs.length){toast('请先选订单截图');return}
  var fail=function(){ocrMsg('');toast('识别组件没下载成功（需要联网）。可改用“粘贴文字”或手动填写')};
- ocrMsg('正在加载识别组件…');
+ ocrMsg('正在准备识别组件…');
+ ppEngine(function(E){var all=[],txt=[],i=0,bad=function(){ocrRunTess(mode,fs,fail)};
+  (function nx(){if(i>=fs.length){ocrFinish(mode,txt,all);return}var tag='识别第 '+(i+1)+'/'+fs.length+' 张';ocrMsg(tag+'…');
+   ppRGB(fs[i],function(rgb,w,h){PPR.PPOCR.ocr(window.ort,E.det,E.rec,E.dict,rgb,w,h,{onProgress:function(k,n){ocrMsg(tag+'：'+k+'/'+n+' 行')}}).then(function(r){txt.push(r.text);ocrOrders(r.text).forEach(function(o){all.push(o)});i++;nx()}).catch(bad)},bad)})()},function(){ocrRunTess(mode,fs,fail)})}
+function ocrRunTess(mode,fs,fail){ocrMsg('改用备用识别（准确度较低）…');
  ocrLoad(function(){ocrWorker(function(w){var all=[],txt=[],i=0;window.OCRTOT=fs.length;
-  (function nx(){if(i>=fs.length){if(mode==='new'){ocrMsg('');nfFromText(txt.join('\n'));return}var seen={},res=all.filter(function(o){var k=[o.nick,o.title,o.amount,o.payDate].join('|');if(seen[k])return false;seen[k]=1;return true});ocrMsg('');view.raw=txt.join('\n');
-   if(res.length){impFound(res);toast('识别到 '+res.length+' 单，请核对')}else{view.t=1;render();toast('没认出订单，识别出的文字已放进“粘贴文字”，可修改后再拆')}return}
+  (function nx(){if(i>=fs.length){ocrFinish(mode,txt,all);return}
    window.OCRCUR=i+1;ocrPrep(fs[i],function(src){w.recognize(src).then(function(r){var tx=r.data.text||'';txt.push(tx);ocrOrders(tx).forEach(function(o){all.push(o)});i++;nx()}).catch(function(){fail()})})})()},fail)},fail)}
 function findOrCreate(nick,sur,cb){var key=sur?nick+'-'+sur:nick;var same=S.customers.filter(function(c){return c.nick.toLowerCase()===nick.toLowerCase()});var ex=same.filter(function(c){return c.key.toLowerCase()===key.toLowerCase()})[0];
  if(ex)return cb(ex);
